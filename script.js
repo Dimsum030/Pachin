@@ -66,14 +66,14 @@ function createBoard() {
     ];
     Composite.add(world, walls);
 
-    // Smooth Top Arch (Yellow)
-    const archSegments = 24;
-    const archRadius = config.width / 2 - 10;
+    // Smooth Top Arch (Yellow) - Increased segments for smoothness
+    const archSegments = 60;
+    const archRadius = config.width / 2 - 5;
     for (let i = 0; i <= archSegments; i++) {
         const angle = Math.PI + (i / archSegments) * Math.PI;
         const x = config.width / 2 + Math.cos(angle) * archRadius;
-        const y = 150 + Math.sin(angle) * 100;
-        const segment = Bodies.rectangle(x, y, 40, 15, {
+        const y = 140 + Math.sin(angle) * 100;
+        const segment = Bodies.rectangle(x, y, 15, 10, {
             isStatic: true,
             angle: angle + Math.PI / 2,
             render: { fillStyle: '#ffcc00' }
@@ -81,21 +81,13 @@ function createBoard() {
         Composite.add(world, segment);
     }
 
-    // Launch Rail (Right side)
-    const railX = config.width - 40;
-    const rail = Bodies.rectangle(railX, config.height / 2 + 150, 8, config.height - 300, {
+    // Launch Rail (Right side) - Narrowed
+    const railX = config.width - 25;
+    const rail = Bodies.rectangle(railX, config.height / 2 + 150, 6, config.height - 300, {
         isStatic: true,
         render: { fillStyle: '#555' }
     });
     Composite.add(world, rail);
-
-    // Bottom Slanted Guide (Left side)
-    const slope = Bodies.rectangle(100, config.height - 150, 250, 10, {
-        isStatic: true,
-        angle: 0.2,
-        render: { fillStyle: '#444' }
-    });
-    Composite.add(world, slope);
 
     // Pins (V-shaped pattern)
     const rows = 12;
