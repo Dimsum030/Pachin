@@ -19,13 +19,16 @@ let isGameOver = false;
 // Matter.js Setup
 const engine = Engine.create();
 const world = engine.world;
+
+// CRITICAL FIX: Pass the engine to the Render.create function!
 const render = Render.create({
     element: document.getElementById('game-container'),
+    engine: engine, // This was missing!
     options: {
         width: config.width,
         height: config.height,
         wireframes: false,
-        background: '#000'
+        background: '#111' // Slightly lighter than black to see if it's rendering
     }
 });
 
@@ -35,6 +38,7 @@ Runner.run(runner, engine);
 
 // UI Elements
 const ballCountDisplay = document.getElementById('ball-count');
+const statusMsg = document.getElementById('status-msg');
 const gameOverDisplay = document.getElementById('game-over');
 const shootBtn = document.getElementById('shoot-btn');
 
@@ -94,7 +98,6 @@ function shoot() {
     Composite.add(world, ball);
 
     // Apply force: Up and Left
-    // Increased force to ensure it reaches the top
     Body.applyForce(ball, ball.position, { x: -0.025, y: -0.055 });
 }
 
@@ -121,15 +124,16 @@ function removeBall(ball) {
 
 function updateUI() {
     ballCountDisplay.innerText = `Balls: ${ballCount}`;
+    statusMsg.innerText = `Active: ${activeBalls.length}`;
 }
 
 // Game Loop Check
 Events.on(engine, 'afterUpdate', () => {
-    // Iterate backwards to safely remove items
     for (let i = activeBalls.length - 1; i >= 0; i--) {
         const ball = activeBalls[i];
         if (ball.position.y > config.height + 50) {
             removeBall(ball);
+            updateUI();
         }
     }
 
@@ -147,3 +151,4 @@ window.addEventListener('keydown', (e) => { if (e.code === 'Space') shoot(); });
 // Initialize
 createBoard();
 updateUI();
+console.log("Pachin initialized successfully!");
