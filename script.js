@@ -1,16 +1,17 @@
-const { Engine, Render, Runner, Bodies, Composite, Events, Body, Vector } = Matter;
+const { Engine, Render, Runner, Bodies, Composite, Events, Body, Vector, Vertices } = Matter;
 
 // Game Configuration
 const config = {
-    width: 500, // Narrower like the real machine
+    width: 500,
     height: 800,
     ballRadius: 7,
     pinRadius: 3,
     initialBalls: 10,
     winReward: 5,
     maxChargeTime: 1500,
-    minForce: { x: -0.001, y: -0.005 },
-    maxForce: { x: -0.008, y: -0.022 },
+    // Power tuned for vertical launch
+    minForceY: -0.015,
+    maxForceY: -0.045,
     numGates: 10,
     gateWidth: 40
 };
@@ -66,23 +67,29 @@ function createBoard() {
     ];
     Composite.add(world, walls);
 
-    // Smooth Top Arch (Yellow) - Increased segments for smoothness
-    const archSegments = 60;
+    // Smooth Top Arch (Using high-density segments for a true curve)
+    const archSegments = 80;
     const archRadius = config.width / 2 - 5;
+    const centerX = config.width / 2;
+    const centerY = 160;
+
     for (let i = 0; i <= archSegments; i++) {
         const angle = Math.PI + (i / archSegments) * Math.PI;
-        const x = config.width / 2 + Math.cos(angle) * archRadius;
-        const y = 140 + Math.sin(angle) * 100;
-        const segment = Bodies.rectangle(x, y, 15, 10, {
+        const x = centerX + Math.cos(angle) * archRadius;
+        const y = centerY + Math.sin(angle) * 120; // Slightly elliptical for better flow
+        
+        const segment = Bodies.rectangle(x, y, 12, 10, {
             isStatic: true,
             angle: angle + Math.PI / 2,
+            friction: 0,
+            restitution: 0.8,
             render: { fillStyle: '#ffcc00' }
         });
         Composite.add(world, segment);
     }
 
-    // Launch Rail (Right side) - Narrowed
-    const railX = config.width - 25;
+    // Launch Rail (Right side) - Positioned to create a narrow channel
+    const railX = config.width - 30;
     const rail = Bodies.rectangle(railX, config.height / 2 + 150, 6, config.height - 300, {
         isStatic: true,
         render: { fillStyle: '#555' }
@@ -94,12 +101,11 @@ function createBoard() {
     for (let r = 0; r < rows; r++) {
         const cols = 8 - (r % 2);
         const rowWidth = cols * 40;
-        const startX = (config.width - rowWidth) / 2 - 20;
+        const startX = (config.width - rowWidth) / 2 - 25;
         for (let c = 0; c < cols; c++) {
             const x = startX + (c * 40);
-            const y = 220 + (r * 35);
-            // Add some randomness to pin positions for a more natural feel
-            const pin = Bodies.circle(x + (Math.random() * 4 - 2), y, config.pinRadius, { 
+            const y = 240 + (r * 35);
+            const pin = Bodies.circle(x, y, config.pinRadius, { 
                 isStatic: true, 
                 render: { fillStyle: '#ccc' } 
             });
@@ -107,19 +113,17 @@ function createBoard() {
         }
     }
 
-    // 10 Gates at the bottom with yellow dividers
+    // 10 Gates at the bottom
     const startX = (config.width - (config.numGates * config.gateWidth)) / 2 - 20;
     for (let i = 0; i < config.numGates; i++) {
         const x = startX + (i * config.gateWidth) + config.gateWidth / 2;
         
-        // Yellow Divider
         const divider = Bodies.rectangle(x - config.gateWidth / 2, config.height - 60, 4, 60, {
             isStatic: true,
             render: { fillStyle: '#ffcc00' }
         });
         Composite.add(world, divider);
 
-        // Sensor Gate
         const gate = Bodies.rectangle(x, config.height - 40, config.gateWidth - 10, 20, {
             isStatic: true,
             isSensor: true,
@@ -128,7 +132,6 @@ function createBoard() {
         });
         Composite.add(world, gate);
 
-        // Final divider for the last gate
         if (i === config.numGates - 1) {
             const lastDivider = Bodies.rectangle(x + config.gateWidth / 2, config.height - 60, 4, 60, {
                 isStatic: true,
@@ -143,7 +146,7 @@ function createBoard() {
 function updateLight(time) {
     if (isLightStopped) return;
 
-    if (time - lastLightUpdate > 120) {
+    if (time - lastLightUpdate > 100) {
         lightIndex += lightDirection;
         if (lightIndex >= config.numGates - 1 || lightIndex <= 0) {
             lightDirection *= -1;
@@ -180,14 +183,18 @@ function releaseAndShoot() {
     chargeBar.style.width = '0%';
 
     ballCount--;
-    isLightStopped = false;
+    // DO NOT reset isLightStopped here. Wait until ball is gone.
     shootBtn.disabled = true;
-    statusMsg.innerText = "STOP LIGHT FIRST";
+    statusMsg.innerText = "BALL IN PLAY";
     updateUI();
 
-    const ball = Bodies.circle(config.width - 20, config.height - 40, config.ballRadius, {
-        restitution: 0.6,
-        friction: 0.001,
+    // Spawn ball at the bottom of the rail channel (between rail and right wall)
+    const spawnX = config.width - 15;
+    const spawnY = config.height - 40;
+
+    const ball = Bodies.circle(spawnX, spawnY, config.ballRadius, {
+        restitution: 0.5,
+        friction: 0,
         label: 'ball',
         render: { fillStyle: '#eee' }
     });
@@ -195,14 +202,13 @@ function releaseAndShoot() {
     activeBalls.push(ball);
     Composite.add(world, ball);
 
-    const forceX = config.minForce.x + (config.maxForce.x - config.minForce.x) * chargeRatio;
-    const forceY = config.minForce.y + (config.maxForce.y - config.minForce.y) * chargeRatio;
-
-    Body.applyForce(ball, ball.position, { x: forceX, y: forceY });
+    // Apply force: Straight UP
+    const forceY = config.minForceY + (config.maxForceY - config.minForceY) * chargeRatio;
+    Body.applyForce(ball, ball.position, { x: 0, y: forceY });
 }
 
 function stopLight() {
-    if (isLightStopped || isGameOver) return;
+    if (isLightStopped || isGameOver || activeBalls.length > 0) return;
     isLightStopped = true;
     activeGateIndex = lightIndex;
     shootBtn.disabled = false;
@@ -230,6 +236,13 @@ Events.on(engine, 'collisionStart', (event) => {
 function removeBall(ball) {
     Composite.remove(world, ball);
     activeBalls = activeBalls.filter(b => b !== ball);
+    
+    // Reset light ONLY when all balls are gone
+    if (activeBalls.length === 0 && !isGameOver) {
+        isLightStopped = false;
+        shootBtn.disabled = true;
+        statusMsg.innerText = "STOP LIGHT FIRST";
+    }
 }
 
 function updateUI() {
