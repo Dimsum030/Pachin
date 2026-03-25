@@ -1,0 +1,73 @@
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #1a1a1a;
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#game-container {
+    position: relative;
+    border: 10px solid #ffcc00;
+    border-radius: 20px;
+    box-shadow: 0 0 30px #ffcc00;
+    background-color: #000;
+}
+
+#ui-overlay {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: #ffcc00;
+    font-size: 24px;
+    font-weight: bold;
+    pointer-events: none;
+    z-index: 10;
+}
+
+#game-over {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 64px;
+    color: #ff0000;
+    text-shadow: 0 0 20px #ff0000;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+    display: none;
+}
+
+#game-over.visible {
+    display: block;
+}
+
+#shoot-btn {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    padding: 15px 30px;
+    font-size: 20px;
+    font-weight: bold;
+    background-color: #ffcc00;
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 5px #cc9900;
+    transition: all 0.1s;
+}
+
+#shoot-btn:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px #cc9900;
+}
+
+canvas {
+    display: block;
+}
