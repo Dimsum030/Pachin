@@ -8,10 +8,13 @@ const config = {
     pinRadius: 4,
     pinSpacing: 40,
     initialBalls: 10,
-    winReward: 3,
-    maxChargeTime: 1500, // 1.5 seconds for max power
-    minForce: { x: -0.005, y: -0.015 },
-    maxForce: { x: -0.035, y: -0.075 }
+    winReward: 5,
+    maxChargeTime: 1500,
+    // Power cut to 1/3 of previous values
+    minForce: { x: -0.002, y: -0.005 },
+    maxForce: { x: -0.012, y: -0.025 },
+    numGates: 10,
+    gateWidth: 50
 };
 
 // State
@@ -20,6 +23,11 @@ let activeBalls = [];
 let isGameOver = false;
 let chargeStartTime = 0;
 let isCharging = false;
+let isLightStopped = false;
+let activeGateIndex = 0;
+let lightIndex = 0;
+let lightDirection = 1;
+let lastLightUpdate = 0;
 
 // Matter.js Setup
 const engine = Engine.create();
@@ -47,50 +55,82 @@ const ballCountDisplay = document.getElementById('ball-count');
 const statusMsg = document.getElementById('status-msg');
 const gameOverOverlay = document.getElementById('game-over-overlay');
 const shootBtn = document.getElementById('shoot-btn');
+const stopLightBtn = document.getElementById('stop-light-btn');
 const chargeContainer = document.getElementById('charge-container');
 const chargeBar = document.getElementById('charge-bar');
 
 // Create Board
 function createBoard() {
-    // Thicker walls to prevent tunneling (100px thick)
+    // Thicker walls
     const walls = [
-        Bodies.rectangle(config.width / 2, -50, config.width + 200, 100, { isStatic: true, render: { fillStyle: '#333' } }), // Top
         Bodies.rectangle(-50, config.height / 2, 100, config.height + 200, { isStatic: true, render: { fillStyle: '#333' } }), // Left
         Bodies.rectangle(config.width + 50, config.height / 2, 100, config.height + 200, { isStatic: true, render: { fillStyle: '#333' } }) // Right
     ];
     Composite.add(world, walls);
 
+    // Curved Top (Arch)
+    const archSegments = 12;
+    for (let i = 0; i <= archSegments; i++) {
+        const angle = Math.PI + (i / archSegments) * Math.PI;
+        const x = config.width / 2 + Math.cos(angle) * (config.width / 2);
+        const y = 100 + Math.sin(angle) * 100;
+        const segment = Bodies.rectangle(x, y, 60, 20, {
+            isStatic: true,
+            angle: angle + Math.PI / 2,
+            render: { fillStyle: '#333' }
+        });
+        Composite.add(world, segment);
+    }
+
+    // Launch Rail (Right side)
+    const rail = Bodies.rectangle(config.width - 60, config.height / 2 + 100, 10, config.height - 200, {
+        isStatic: true,
+        render: { fillStyle: '#444' }
+    });
+    Composite.add(world, rail);
+
     // Pins
-    const rows = 12;
-    const cols = 10;
+    const rows = 10;
+    const cols = 8;
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-            const x = (c * config.pinSpacing) + (config.width - (cols - 1) * config.pinSpacing) / 2 + (r % 2 === 0 ? 0 : config.pinSpacing / 2);
-            const y = 150 + (r * config.pinSpacing);
+            const x = (c * config.pinSpacing) + (config.width - (cols - 1) * config.pinSpacing) / 2 - 30;
+            const y = 200 + (r * config.pinSpacing);
             const pin = Bodies.circle(x, y, config.pinRadius, { isStatic: true, render: { fillStyle: '#fff' } });
             Composite.add(world, pin);
         }
     }
 
-    // Winning Pockets
-    const pocketWidth = 80;
-    const pocketY = config.height - 40;
-    const pocketPositions = [config.width * 0.25, config.width * 0.5, config.width * 0.75];
-    
-    pocketPositions.forEach(x => {
-        const pocket = Bodies.rectangle(x, pocketY, pocketWidth, 20, {
+    // 10 Gates at the bottom
+    const startX = (config.width - (config.numGates * config.gateWidth)) / 2;
+    for (let i = 0; i < config.numGates; i++) {
+        const x = startX + (i * config.gateWidth) + config.gateWidth / 2;
+        const gate = Bodies.rectangle(x, config.height - 40, config.gateWidth - 10, 20, {
             isStatic: true,
             isSensor: true,
-            label: 'pocket',
-            render: { fillStyle: '#00ff00', opacity: 0.5 }
+            label: `gate_${i}`,
+            render: { fillStyle: '#222', opacity: 0.5 }
         });
-        Composite.add(world, pocket);
-    });
+        Composite.add(world, gate);
+    }
+}
+
+// Light Bouncing Logic
+function updateLight(time) {
+    if (isLightStopped) return;
+
+    if (time - lastLightUpdate > 100) { // Update every 100ms
+        lightIndex += lightDirection;
+        if (lightIndex >= config.numGates - 1 || lightIndex <= 0) {
+            lightDirection *= -1;
+        }
+        lastLightUpdate = time;
+    }
 }
 
 // Shooting Logic
 function startCharging() {
-    if (ballCount <= 0 || isGameOver || isCharging) return;
+    if (ballCount <= 0 || isGameOver || isCharging || !isLightStopped) return;
     isCharging = true;
     chargeStartTime = Date.now();
     chargeContainer.style.display = 'block';
@@ -116,9 +156,12 @@ function releaseAndShoot() {
     chargeBar.style.width = '0%';
 
     ballCount--;
+    isLightStopped = false; // Reset light for next shot
+    shootBtn.disabled = true;
+    statusMsg.innerText = "STOP LIGHT FIRST";
     updateUI();
 
-    const ball = Bodies.circle(config.width - 40, config.height - 40, config.ballRadius, {
+    const ball = Bodies.circle(config.width - 30, config.height - 40, config.ballRadius, {
         restitution: 0.5,
         friction: 0.005,
         label: 'ball',
@@ -128,24 +171,33 @@ function releaseAndShoot() {
     activeBalls.push(ball);
     Composite.add(world, ball);
 
-    // Calculate force based on charge
     const forceX = config.minForce.x + (config.maxForce.x - config.minForce.x) * chargeRatio;
     const forceY = config.minForce.y + (config.maxForce.y - config.minForce.y) * chargeRatio;
 
     Body.applyForce(ball, ball.position, { x: forceX, y: forceY });
 }
 
+function stopLight() {
+    if (isLightStopped || isGameOver) return;
+    isLightStopped = true;
+    activeGateIndex = lightIndex;
+    shootBtn.disabled = false;
+    statusMsg.innerText = "READY TO SHOOT";
+}
+
 // Collision Handling
 Events.on(engine, 'collisionStart', (event) => {
     event.pairs.forEach(pair => {
         const { bodyA, bodyB } = pair;
+        const ball = bodyA.label === 'ball' ? bodyA : (bodyB.label === 'ball' ? bodyB : null);
+        const gate = bodyA.label.startsWith('gate_') ? bodyA : (bodyB.label.startsWith('gate_') ? bodyB : null);
         
-        if ((bodyA.label === 'ball' && bodyB.label === 'pocket') || 
-            (bodyA.label === 'pocket' && bodyB.label === 'ball')) {
-            
-            const ball = bodyA.label === 'ball' ? bodyA : bodyB;
+        if (ball && gate) {
+            const gateIdx = parseInt(gate.label.split('_')[1]);
+            if (gateIdx === activeGateIndex) {
+                ballCount += config.winReward;
+            }
             removeBall(ball);
-            ballCount += config.winReward;
             updateUI();
         }
     });
@@ -158,11 +210,28 @@ function removeBall(ball) {
 
 function updateUI() {
     ballCountDisplay.innerText = `Balls: ${ballCount}`;
-    statusMsg.innerText = `Active: ${activeBalls.length}`;
 }
 
 // Game Loop Check
 Events.on(engine, 'afterUpdate', () => {
+    const time = Date.now();
+    updateLight(time);
+
+    // Update gate visuals
+    const bodies = Composite.allBodies(world);
+    bodies.forEach(body => {
+        if (body.label.startsWith('gate_')) {
+            const idx = parseInt(body.label.split('_')[1]);
+            if (idx === (isLightStopped ? activeGateIndex : lightIndex)) {
+                body.render.fillStyle = '#00ff00';
+                body.render.opacity = 0.8;
+            } else {
+                body.render.fillStyle = '#222';
+                body.render.opacity = 0.5;
+            }
+        }
+    });
+
     for (let i = activeBalls.length - 1; i >= 0; i--) {
         const ball = activeBalls[i];
         if (ball.position.y > config.height + 50) {
@@ -171,19 +240,19 @@ Events.on(engine, 'afterUpdate', () => {
         }
     }
 
-    // Check Game Over
     if (ballCount === 0 && activeBalls.length === 0 && !isGameOver) {
         isGameOver = true;
         gameOverOverlay.classList.add('visible');
     }
 });
 
-// Event Listeners for Charging
+// Event Listeners
 shootBtn.addEventListener('mousedown', startCharging);
 shootBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startCharging(); });
-
 window.addEventListener('mouseup', releaseAndShoot);
 window.addEventListener('touchend', releaseAndShoot);
+
+stopLightBtn.addEventListener('click', stopLight);
 
 // Initialize
 createBoard();

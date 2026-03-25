@@ -55,7 +55,6 @@ body {
     object-fit: contain;
 }
 
-/* Charge Bar Styling */
 #charge-container {
     position: absolute;
     bottom: 20px;
@@ -68,7 +67,7 @@ body {
     border-radius: 5px;
     overflow: hidden;
     z-index: 150;
-    display: none; /* Hidden by default */
+    display: none;
 }
 
 #charge-bar {
@@ -112,32 +111,57 @@ body {
 }
 
 #button-layer {
-    height: 100px;
+    height: 120px;
     display: flex;
-    justify-content: center;
+    justify-content: space-around;
     align-items: center;
     background: #222;
     border-top: 2px solid #333;
     z-index: 100;
+    padding: 0 10px;
 }
 
-#shoot-btn {
-    width: 80%;
-    height: 60px;
-    font-size: 24px;
+#stop-light-btn, #shoot-btn {
+    flex: 1;
+    height: 70px;
+    margin: 0 5px;
+    font-size: 18px;
     font-weight: bold;
-    background-color: #ffcc00;
-    color: #000;
     border: none;
     border-radius: 10px;
     cursor: pointer;
-    box-shadow: 0 5px #cc9900;
+    box-shadow: 0 5px #333;
     transition: all 0.1s;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
 
-#shoot-btn:active {
+#stop-light-btn {
+    background-color: #00ccff;
+    color: #000;
+    box-shadow: 0 5px #0099cc;
+}
+
+#stop-light-btn:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px #0099cc;
+}
+
+#shoot-btn {
+    background-color: #ffcc00;
+    color: #000;
+    box-shadow: 0 5px #cc9900;
+}
+
+#shoot-btn:disabled {
+    background-color: #555;
+    color: #888;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+}
+
+#shoot-btn:not(:disabled):active {
     transform: translateY(3px);
     box-shadow: 0 2px #cc9900;
     background-color: #ffaa00;
