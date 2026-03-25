@@ -9,13 +9,20 @@
 </head>
 <body>
     <div id="game-wrapper">
-        <div id="ui-overlay">
+        <div id="ui-layer">
             <div id="ball-count">Balls: 10</div>
             <div id="status-msg">READY</div>
-            <div id="game-over">GAME OVER</div>
         </div>
-        <div id="game-container"></div>
-        <div id="controls">
+        
+        <div id="canvas-container">
+            <canvas id="pachinko-canvas"></canvas>
+            <div id="game-over-overlay">
+                <h1>GAME OVER</h1>
+                <button onclick="location.reload()">RESTART</button>
+            </div>
+        </div>
+
+        <div id="button-layer">
             <button id="shoot-btn">SHOOT</button>
         </div>
     </div>

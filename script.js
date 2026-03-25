@@ -20,15 +20,19 @@ let isGameOver = false;
 const engine = Engine.create();
 const world = engine.world;
 
-// CRITICAL FIX: Pass the engine to the Render.create function!
+// Explicitly get the canvas
+const canvas = document.getElementById('pachinko-canvas');
+
+// Initialize the Render with the explicit canvas
 const render = Render.create({
-    element: document.getElementById('game-container'),
-    engine: engine, // This was missing!
+    canvas: canvas,
+    engine: engine,
     options: {
         width: config.width,
         height: config.height,
         wireframes: false,
-        background: '#111' // Slightly lighter than black to see if it's rendering
+        background: '#111',
+        pixelRatio: window.devicePixelRatio || 1
     }
 });
 
@@ -39,7 +43,7 @@ Runner.run(runner, engine);
 // UI Elements
 const ballCountDisplay = document.getElementById('ball-count');
 const statusMsg = document.getElementById('status-msg');
-const gameOverDisplay = document.getElementById('game-over');
+const gameOverOverlay = document.getElementById('game-over-overlay');
 const shootBtn = document.getElementById('shoot-btn');
 
 // Create Board
@@ -140,7 +144,7 @@ Events.on(engine, 'afterUpdate', () => {
     // Check Game Over
     if (ballCount === 0 && activeBalls.length === 0 && !isGameOver) {
         isGameOver = true;
-        gameOverDisplay.classList.add('visible');
+        gameOverOverlay.classList.add('visible');
     }
 });
 
