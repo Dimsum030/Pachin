@@ -2,19 +2,17 @@ const { Engine, Render, Runner, Bodies, Composite, Events, Body, Vector } = Matt
 
 // Game Configuration
 const config = {
-    width: 600,
+    width: 500, // Narrower like the real machine
     height: 800,
-    ballRadius: 8,
-    pinRadius: 4,
-    pinSpacing: 40,
+    ballRadius: 7,
+    pinRadius: 3,
     initialBalls: 10,
     winReward: 5,
     maxChargeTime: 1500,
-    // Power cut to 1/3 of previous values
-    minForce: { x: -0.002, y: -0.005 },
-    maxForce: { x: -0.012, y: -0.025 },
+    minForce: { x: -0.001, y: -0.005 },
+    maxForce: { x: -0.008, y: -0.022 },
     numGates: 10,
-    gateWidth: 50
+    gateWidth: 40
 };
 
 // State
@@ -68,43 +66,68 @@ function createBoard() {
     ];
     Composite.add(world, walls);
 
-    // Curved Top (Arch)
-    const archSegments = 12;
+    // Smooth Top Arch (Yellow)
+    const archSegments = 24;
+    const archRadius = config.width / 2 - 10;
     for (let i = 0; i <= archSegments; i++) {
         const angle = Math.PI + (i / archSegments) * Math.PI;
-        const x = config.width / 2 + Math.cos(angle) * (config.width / 2);
-        const y = 100 + Math.sin(angle) * 100;
-        const segment = Bodies.rectangle(x, y, 60, 20, {
+        const x = config.width / 2 + Math.cos(angle) * archRadius;
+        const y = 150 + Math.sin(angle) * 100;
+        const segment = Bodies.rectangle(x, y, 40, 15, {
             isStatic: true,
             angle: angle + Math.PI / 2,
-            render: { fillStyle: '#333' }
+            render: { fillStyle: '#ffcc00' }
         });
         Composite.add(world, segment);
     }
 
     // Launch Rail (Right side)
-    const rail = Bodies.rectangle(config.width - 60, config.height / 2 + 100, 10, config.height - 200, {
+    const railX = config.width - 40;
+    const rail = Bodies.rectangle(railX, config.height / 2 + 150, 8, config.height - 300, {
         isStatic: true,
-        render: { fillStyle: '#444' }
+        render: { fillStyle: '#555' }
     });
     Composite.add(world, rail);
 
-    // Pins
-    const rows = 10;
-    const cols = 8;
+    // Bottom Slanted Guide (Left side)
+    const slope = Bodies.rectangle(100, config.height - 150, 250, 10, {
+        isStatic: true,
+        angle: 0.2,
+        render: { fillStyle: '#444' }
+    });
+    Composite.add(world, slope);
+
+    // Pins (V-shaped pattern)
+    const rows = 12;
     for (let r = 0; r < rows; r++) {
+        const cols = 8 - (r % 2);
+        const rowWidth = cols * 40;
+        const startX = (config.width - rowWidth) / 2 - 20;
         for (let c = 0; c < cols; c++) {
-            const x = (c * config.pinSpacing) + (config.width - (cols - 1) * config.pinSpacing) / 2 - 30;
-            const y = 200 + (r * config.pinSpacing);
-            const pin = Bodies.circle(x, y, config.pinRadius, { isStatic: true, render: { fillStyle: '#fff' } });
+            const x = startX + (c * 40);
+            const y = 220 + (r * 35);
+            // Add some randomness to pin positions for a more natural feel
+            const pin = Bodies.circle(x + (Math.random() * 4 - 2), y, config.pinRadius, { 
+                isStatic: true, 
+                render: { fillStyle: '#ccc' } 
+            });
             Composite.add(world, pin);
         }
     }
 
-    // 10 Gates at the bottom
-    const startX = (config.width - (config.numGates * config.gateWidth)) / 2;
+    // 10 Gates at the bottom with yellow dividers
+    const startX = (config.width - (config.numGates * config.gateWidth)) / 2 - 20;
     for (let i = 0; i < config.numGates; i++) {
         const x = startX + (i * config.gateWidth) + config.gateWidth / 2;
+        
+        // Yellow Divider
+        const divider = Bodies.rectangle(x - config.gateWidth / 2, config.height - 60, 4, 60, {
+            isStatic: true,
+            render: { fillStyle: '#ffcc00' }
+        });
+        Composite.add(world, divider);
+
+        // Sensor Gate
         const gate = Bodies.rectangle(x, config.height - 40, config.gateWidth - 10, 20, {
             isStatic: true,
             isSensor: true,
@@ -112,6 +135,15 @@ function createBoard() {
             render: { fillStyle: '#222', opacity: 0.5 }
         });
         Composite.add(world, gate);
+
+        // Final divider for the last gate
+        if (i === config.numGates - 1) {
+            const lastDivider = Bodies.rectangle(x + config.gateWidth / 2, config.height - 60, 4, 60, {
+                isStatic: true,
+                render: { fillStyle: '#ffcc00' }
+            });
+            Composite.add(world, lastDivider);
+        }
     }
 }
 
@@ -119,7 +151,7 @@ function createBoard() {
 function updateLight(time) {
     if (isLightStopped) return;
 
-    if (time - lastLightUpdate > 100) { // Update every 100ms
+    if (time - lastLightUpdate > 120) {
         lightIndex += lightDirection;
         if (lightIndex >= config.numGates - 1 || lightIndex <= 0) {
             lightDirection *= -1;
@@ -156,16 +188,16 @@ function releaseAndShoot() {
     chargeBar.style.width = '0%';
 
     ballCount--;
-    isLightStopped = false; // Reset light for next shot
+    isLightStopped = false;
     shootBtn.disabled = true;
     statusMsg.innerText = "STOP LIGHT FIRST";
     updateUI();
 
-    const ball = Bodies.circle(config.width - 30, config.height - 40, config.ballRadius, {
-        restitution: 0.5,
-        friction: 0.005,
+    const ball = Bodies.circle(config.width - 20, config.height - 40, config.ballRadius, {
+        restitution: 0.6,
+        friction: 0.001,
         label: 'ball',
-        render: { fillStyle: '#ffcc00' }
+        render: { fillStyle: '#eee' }
     });
 
     activeBalls.push(ball);
@@ -182,7 +214,7 @@ function stopLight() {
     isLightStopped = true;
     activeGateIndex = lightIndex;
     shootBtn.disabled = false;
-    statusMsg.innerText = "READY TO SHOOT";
+    statusMsg.innerText = "READY";
 }
 
 // Collision Handling
