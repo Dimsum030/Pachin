@@ -2,18 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pachin - Pachinko Game</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 </head>
 <body>
-    <div id="game-container">
+    <div id="game-wrapper">
         <div id="ui-overlay">
             <div id="ball-count">Balls: 10</div>
-            <div id="game-over" class="hidden">GAME OVER</div>
+            <div id="game-over">GAME OVER</div>
         </div>
-        <canvas id="game-canvas"></canvas>
+        <div id="game-container"></div>
         <button id="shoot-btn">SHOOT</button>
     </div>
     <script src="script.js"></script>

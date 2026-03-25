@@ -21,7 +21,6 @@ const engine = Engine.create();
 const world = engine.world;
 const render = Render.create({
     element: document.getElementById('game-container'),
-    canvas: document.getElementById('game-canvas'),
     options: {
         width: config.width,
         height: config.height,
@@ -95,7 +94,8 @@ function shoot() {
     Composite.add(world, ball);
 
     // Apply force: Up and Left
-    Body.applyForce(ball, ball.position, { x: -0.015, y: -0.035 });
+    // Increased force to ensure it reaches the top
+    Body.applyForce(ball, ball.position, { x: -0.025, y: -0.055 });
 }
 
 // Collision Handling
@@ -125,12 +125,13 @@ function updateUI() {
 
 // Game Loop Check
 Events.on(engine, 'afterUpdate', () => {
-    activeBalls.forEach(ball => {
-        // Remove if falls past bottom
+    // Iterate backwards to safely remove items
+    for (let i = activeBalls.length - 1; i >= 0; i--) {
+        const ball = activeBalls[i];
         if (ball.position.y > config.height + 50) {
             removeBall(ball);
         }
-    });
+    }
 
     // Check Game Over
     if (ballCount === 0 && activeBalls.length === 0 && !isGameOver) {
