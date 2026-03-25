@@ -8,22 +8,24 @@ const config = {
     pinRadius: 4,
     pinSpacing: 40,
     initialBalls: 10,
-    winReward: 3
+    winReward: 3,
+    maxChargeTime: 1500, // 1.5 seconds for max power
+    minForce: { x: -0.005, y: -0.015 },
+    maxForce: { x: -0.035, y: -0.075 }
 };
 
 // State
 let ballCount = config.initialBalls;
 let activeBalls = [];
 let isGameOver = false;
+let chargeStartTime = 0;
+let isCharging = false;
 
 // Matter.js Setup
 const engine = Engine.create();
 const world = engine.world;
-
-// Explicitly get the canvas
 const canvas = document.getElementById('pachinko-canvas');
 
-// Initialize the Render with the explicit canvas
 const render = Render.create({
     canvas: canvas,
     engine: engine,
@@ -45,14 +47,16 @@ const ballCountDisplay = document.getElementById('ball-count');
 const statusMsg = document.getElementById('status-msg');
 const gameOverOverlay = document.getElementById('game-over-overlay');
 const shootBtn = document.getElementById('shoot-btn');
+const chargeContainer = document.getElementById('charge-container');
+const chargeBar = document.getElementById('charge-bar');
 
 // Create Board
 function createBoard() {
-    // Walls
+    // Thicker walls to prevent tunneling (100px thick)
     const walls = [
-        Bodies.rectangle(config.width / 2, 0, config.width, 20, { isStatic: true, render: { fillStyle: '#333' } }), // Top
-        Bodies.rectangle(0, config.height / 2, 20, config.height, { isStatic: true, render: { fillStyle: '#333' } }), // Left
-        Bodies.rectangle(config.width, config.height / 2, 20, config.height, { isStatic: true, render: { fillStyle: '#333' } }) // Right
+        Bodies.rectangle(config.width / 2, -50, config.width + 200, 100, { isStatic: true, render: { fillStyle: '#333' } }), // Top
+        Bodies.rectangle(-50, config.height / 2, 100, config.height + 200, { isStatic: true, render: { fillStyle: '#333' } }), // Left
+        Bodies.rectangle(config.width + 50, config.height / 2, 100, config.height + 200, { isStatic: true, render: { fillStyle: '#333' } }) // Right
     ];
     Composite.add(world, walls);
 
@@ -85,8 +89,31 @@ function createBoard() {
 }
 
 // Shooting Logic
-function shoot() {
-    if (ballCount <= 0 || isGameOver) return;
+function startCharging() {
+    if (ballCount <= 0 || isGameOver || isCharging) return;
+    isCharging = true;
+    chargeStartTime = Date.now();
+    chargeContainer.style.display = 'block';
+    updateChargeBar();
+}
+
+function updateChargeBar() {
+    if (!isCharging) return;
+    const duration = Math.min(Date.now() - chargeStartTime, config.maxChargeTime);
+    const percent = (duration / config.maxChargeTime) * 100;
+    chargeBar.style.width = `${percent}%`;
+    requestAnimationFrame(updateChargeBar);
+}
+
+function releaseAndShoot() {
+    if (!isCharging) return;
+    
+    const duration = Math.min(Date.now() - chargeStartTime, config.maxChargeTime);
+    const chargeRatio = duration / config.maxChargeTime;
+    
+    isCharging = false;
+    chargeContainer.style.display = 'none';
+    chargeBar.style.width = '0%';
 
     ballCount--;
     updateUI();
@@ -101,8 +128,11 @@ function shoot() {
     activeBalls.push(ball);
     Composite.add(world, ball);
 
-    // Apply force: Up and Left
-    Body.applyForce(ball, ball.position, { x: -0.025, y: -0.055 });
+    // Calculate force based on charge
+    const forceX = config.minForce.x + (config.maxForce.x - config.minForce.x) * chargeRatio;
+    const forceY = config.minForce.y + (config.maxForce.y - config.minForce.y) * chargeRatio;
+
+    Body.applyForce(ball, ball.position, { x: forceX, y: forceY });
 }
 
 // Collision Handling
@@ -148,9 +178,12 @@ Events.on(engine, 'afterUpdate', () => {
     }
 });
 
-// Event Listeners
-shootBtn.addEventListener('click', shoot);
-window.addEventListener('keydown', (e) => { if (e.code === 'Space') shoot(); });
+// Event Listeners for Charging
+shootBtn.addEventListener('mousedown', startCharging);
+shootBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startCharging(); });
+
+window.addEventListener('mouseup', releaseAndShoot);
+window.addEventListener('touchend', releaseAndShoot);
 
 // Initialize
 createBoard();
