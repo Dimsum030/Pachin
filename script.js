@@ -29,6 +29,10 @@ let lastLightUpdate = 0;
 
 // Matter.js Setup
 const engine = Engine.create();
+// Increase iterations for better collision stability
+engine.positionIterations = 10;
+engine.velocityIterations = 10;
+
 const world = engine.world;
 const canvas = document.getElementById('pachinko-canvas');
 
@@ -66,29 +70,37 @@ function createBoard() {
     ];
     Composite.add(world, walls);
 
-    // 1. Expanded Top Arch (Blue Neon) - Overlapping edges to ensure no gaps
-    const archSegments = 100;
-    const archRadiusX = config.width / 2 + 10; // Slightly wider than canvas
-    const archRadiusY = 220; // Slightly taller
+    // 1. Smooth Top Arch (Blue Neon) - Using high-density segments for a true curve
+    // We use a high number of segments but make them THICKER (40px) to prevent tunneling
+    const archSegments = 150;
+    const archRadiusX = config.width / 2 + 5;
+    const archRadiusY = 220;
     const centerX = config.width / 2;
-    const centerY = 240; // Adjusted to fit the top
+    const centerY = 240;
+    const thickness = 40; // Thick enough to stop fast balls
 
     for (let i = 0; i <= archSegments; i++) {
         const angle = Math.PI + (i / archSegments) * Math.PI;
-        const x = centerX + Math.cos(angle) * archRadiusX;
-        const y = centerY + Math.sin(angle) * archRadiusY;
+        // Position the center of the segment so the INNER edge is at the radius
+        const x = centerX + Math.cos(angle) * (archRadiusX + thickness / 2);
+        const y = centerY + Math.sin(angle) * (archRadiusY + thickness / 2);
         
-        const segment = Bodies.rectangle(x, y, 12, 8, {
+        const segment = Bodies.rectangle(x, y, 15, thickness, {
             isStatic: true,
             angle: angle + Math.PI / 2,
             friction: 0,
             restitution: 0.8,
-            render: { fillStyle: '#00ffff', strokeStyle: '#00ffff', lineWidth: 1 }
+            render: { 
+                fillStyle: '#00ffff', 
+                strokeStyle: '#00ffff', 
+                lineWidth: 1,
+                opacity: 0.9
+            }
         });
         Composite.add(world, segment);
     }
 
-    // 2. Launch Rail (Right side) - Moved closer to edge
+    // 2. Launch Rail (Right side)
     const railX = config.width - 20;
     const rail = Bodies.rectangle(railX, config.height / 2 + 150, 4, config.height - 300, {
         isStatic: true,
@@ -96,7 +108,7 @@ function createBoard() {
     });
     Composite.add(world, rail);
 
-    // 3. Expanded Pin Area - Filling the space
+    // 3. Expanded Pin Area
     const pinAreaWidth = 440;
     const pinAreaHeight = 400;
     const pinAreaX = (config.width - pinAreaWidth) / 2 + 10;
@@ -111,7 +123,6 @@ function createBoard() {
             const x = pinAreaX + (c * pinSpacingX) + (r % 2 === 0 ? 0 : pinSpacingX / 2);
             const y = pinAreaY + (r * pinSpacingY);
             
-            // Only add pins if they are not too close to the right rail
             if (x < railX - 20) {
                 const pin = Bodies.circle(x, y, config.pinRadius, { 
                     isStatic: true, 
@@ -299,4 +310,4 @@ stopLightBtn.addEventListener('click', stopLight);
 // Initialize
 createBoard();
 updateUI();
-console.log("Pachin Cyber Edition updated!");
+console.log("Pachin Cyber Edition v1.1.2 initialized!");
