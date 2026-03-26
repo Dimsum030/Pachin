@@ -39,7 +39,7 @@ const render = Render.create({
         width: config.width,
         height: config.height,
         wireframes: false,
-        background: 'transparent', // Let CSS handle background
+        background: 'transparent',
         pixelRatio: window.devicePixelRatio || 1
     }
 });
@@ -61,21 +61,22 @@ const chargeBar = document.getElementById('charge-bar');
 function createBoard() {
     // Thicker walls
     const walls = [
-        Bodies.rectangle(-50, config.height / 2, 100, config.height + 200, { isStatic: true, render: { fillStyle: '#00ffff', opacity: 0.2 } }), // Left
-        Bodies.rectangle(config.width + 50, config.height / 2, 100, config.height + 200, { isStatic: true, render: { fillStyle: '#00ffff', opacity: 0.2 } }) // Right
+        Bodies.rectangle(-50, config.height / 2, 100, config.height + 200, { isStatic: true, render: { fillStyle: '#00ffff', opacity: 0.1 } }), // Left
+        Bodies.rectangle(config.width + 50, config.height / 2, 100, config.height + 200, { isStatic: true, render: { fillStyle: '#00ffff', opacity: 0.1 } }) // Right
     ];
     Composite.add(world, walls);
 
-    // 1. Top Arch (Blue Neon) - Large semicircle as per sketch
-    const archSegments = 80;
-    const archRadius = config.width / 2 - 10;
+    // 1. Expanded Top Arch (Blue Neon) - Full width
+    const archSegments = 100;
+    const archRadiusX = config.width / 2 - 5;
+    const archRadiusY = 180;
     const centerX = config.width / 2;
-    const centerY = 180;
+    const centerY = 200;
 
     for (let i = 0; i <= archSegments; i++) {
         const angle = Math.PI + (i / archSegments) * Math.PI;
-        const x = centerX + Math.cos(angle) * archRadius;
-        const y = centerY + Math.sin(angle) * 150;
+        const x = centerX + Math.cos(angle) * archRadiusX;
+        const y = centerY + Math.sin(angle) * archRadiusY;
         
         const segment = Bodies.rectangle(x, y, 10, 6, {
             isStatic: true,
@@ -87,47 +88,51 @@ function createBoard() {
         Composite.add(world, segment);
     }
 
-    // 2. Launch Rail (Right side) - Single vertical line as per sketch
-    const railX = config.width - 30;
+    // 2. Launch Rail (Right side) - Moved closer to edge
+    const railX = config.width - 20;
     const rail = Bodies.rectangle(railX, config.height / 2 + 150, 4, config.height - 300, {
         isStatic: true,
         render: { fillStyle: '#00ffff', strokeStyle: '#00ffff', lineWidth: 2 }
     });
     Composite.add(world, rail);
 
-    // 3. Pin Area (Green Square with X) - Pins arranged in a square grid
-    const pinAreaSize = 300;
-    const pinAreaX = (config.width - pinAreaSize) / 2 - 15;
-    const pinAreaY = 250;
-    const pinSpacing = 40;
-    const rows = Math.floor(pinAreaSize / pinSpacing);
-    const cols = Math.floor(pinAreaSize / pinSpacing);
+    // 3. Expanded Pin Area - Filling the space
+    const pinAreaWidth = 440;
+    const pinAreaHeight = 400;
+    const pinAreaX = (config.width - pinAreaWidth) / 2 + 10;
+    const pinAreaY = 220;
+    const pinSpacingX = 40;
+    const pinSpacingY = 35;
+    const rows = Math.floor(pinAreaHeight / pinSpacingY);
+    const cols = Math.floor(pinAreaWidth / pinSpacingX);
 
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
-            const x = pinAreaX + (c * pinSpacing) + (r % 2 === 0 ? 0 : pinSpacing / 2);
-            const y = pinAreaY + (r * pinSpacing);
-            const pin = Bodies.circle(x, y, config.pinRadius, { 
-                isStatic: true, 
-                render: { fillStyle: '#00ff00', strokeStyle: '#00ff00', lineWidth: 1 } 
-            });
-            Composite.add(world, pin);
+            const x = pinAreaX + (c * pinSpacingX) + (r % 2 === 0 ? 0 : pinSpacingX / 2);
+            const y = pinAreaY + (r * pinSpacingY);
+            
+            // Only add pins if they are not too close to the right rail
+            if (x < railX - 20) {
+                const pin = Bodies.circle(x, y, config.pinRadius, { 
+                    isStatic: true, 
+                    render: { fillStyle: '#00ff00', strokeStyle: '#00ff00', lineWidth: 1 } 
+                });
+                Composite.add(world, pin);
+            }
         }
     }
 
-    // 4. Bottom Gates (Blue Vertical Lines)
+    // 4. Bottom Gates
     const startX = (config.width - (config.numGates * config.gateWidth)) / 2 - 20;
     for (let i = 0; i < config.numGates; i++) {
         const x = startX + (i * config.gateWidth) + config.gateWidth / 2;
         
-        // Vertical Divider Line
         const divider = Bodies.rectangle(x - config.gateWidth / 2, config.height - 60, 2, 80, {
             isStatic: true,
             render: { fillStyle: '#00ffff' }
         });
         Composite.add(world, divider);
 
-        // Sensor Gate
         const gate = Bodies.rectangle(x, config.height - 40, config.gateWidth - 10, 20, {
             isStatic: true,
             isSensor: true,
@@ -191,7 +196,7 @@ function releaseAndShoot() {
     statusMsg.innerText = "BALL IN PLAY";
     updateUI();
 
-    const spawnX = config.width - 15;
+    const spawnX = config.width - 10;
     const spawnY = config.height - 40;
 
     const ball = Bodies.circle(spawnX, spawnY, config.ballRadius, {
@@ -254,7 +259,7 @@ Events.on(engine, 'afterUpdate', () => {
     const time = Date.now();
     updateLight(time);
 
-    // Update gate visuals (Neon Glow for active gate)
+    // Update gate visuals
     const bodies = Composite.allBodies(world);
     bodies.forEach(body => {
         if (body.label.startsWith('gate_')) {
@@ -294,4 +299,4 @@ stopLightBtn.addEventListener('click', stopLight);
 // Initialize
 createBoard();
 updateUI();
-console.log("Pachin Cyber Edition initialized!");
+console.log("Pachin Cyber Edition updated!");
