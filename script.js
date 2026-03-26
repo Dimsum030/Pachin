@@ -66,24 +66,24 @@ function createBoard() {
     ];
     Composite.add(world, walls);
 
-    // 1. Expanded Top Arch (Blue Neon) - Full width
+    // 1. Expanded Top Arch (Blue Neon) - Full width, no margins
     const archSegments = 100;
-    const archRadiusX = config.width / 2 - 5;
-    const archRadiusY = 180;
+    const archRadiusX = config.width / 2; // Exactly half width
+    const archRadiusY = 200; // Slightly taller for better curve
     const centerX = config.width / 2;
-    const centerY = 200;
+    const centerY = 220; // Adjusted to fit the top
 
     for (let i = 0; i <= archSegments; i++) {
         const angle = Math.PI + (i / archSegments) * Math.PI;
         const x = centerX + Math.cos(angle) * archRadiusX;
         const y = centerY + Math.sin(angle) * archRadiusY;
         
-        const segment = Bodies.rectangle(x, y, 10, 6, {
+        const segment = Bodies.rectangle(x, y, 12, 8, {
             isStatic: true,
             angle: angle + Math.PI / 2,
             friction: 0,
             restitution: 0.8,
-            render: { fillStyle: '#00ffff', strokeStyle: '#00ffff', lineWidth: 2 }
+            render: { fillStyle: '#00ffff', strokeStyle: '#00ffff', lineWidth: 1 }
         });
         Composite.add(world, segment);
     }
