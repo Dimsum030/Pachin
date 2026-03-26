@@ -10,8 +10,8 @@ const config = {
     winReward: 5,
     maxChargeTime: 1500,
     // Power tuned for vertical launch
-    minForceY: -0.015,
-    maxForceY: -0.045,
+    minForceY: -0.005,
+    maxForceY: -0.025,
     numGates: 10,
     gateWidth: 40
 };
