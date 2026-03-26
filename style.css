@@ -123,6 +123,16 @@ body {
     align-items: center;
     padding: 20px;
     z-index: 100;
+    position: relative; /* Added for version tag positioning */
+}
+
+#version-tag {
+    position: absolute;
+    bottom: 5px;
+    left: 10px;
+    font-size: 10px;
+    color: rgba(0, 255, 255, 0.5);
+    pointer-events: none;
 }
 
 #stop-light-btn, #shoot-btn {
