@@ -10,7 +10,7 @@ const config = {
     winReward: 5,
     maxChargeTime: 1500,
     minForceY: -0.005,
-    maxForceY: -0.025,
+    maxForceY: -0.018, // Reduced max force again
     numGates: 10,
     gateWidth: 40
 };
@@ -29,7 +29,6 @@ let lastLightUpdate = 0;
 
 // Matter.js Setup
 const engine = Engine.create();
-// Increase iterations for better collision stability
 engine.positionIterations = 10;
 engine.velocityIterations = 10;
 
@@ -70,14 +69,13 @@ function createBoard() {
     ];
     Composite.add(world, walls);
 
-    // 1. Smooth Top Arch (Blue Neon) - Using high-density segments for a true curve
-    // We use a high number of segments but make them THICKER (40px) to prevent tunneling
+    // 1. Filled Top Arch (Blue Neon)
     const archSegments = 150;
     const archRadiusX = config.width / 2 + 5;
     const archRadiusY = 220;
     const centerX = config.width / 2;
     const centerY = 240;
-    const thickness = 40; // Thick enough to stop fast balls
+    const thickness = 100; // Increased thickness to fill the top
 
     for (let i = 0; i <= archSegments; i++) {
         const angle = Math.PI + (i / archSegments) * Math.PI;
@@ -94,24 +92,25 @@ function createBoard() {
                 fillStyle: '#00ffff', 
                 strokeStyle: '#00ffff', 
                 lineWidth: 1,
-                opacity: 0.9
+                opacity: 1.0 // Fully opaque to fill the top
             }
         });
         Composite.add(world, segment);
     }
 
-    // 2. Launch Rail (Right side)
-    const railX = config.width - 20;
-    const rail = Bodies.rectangle(railX, config.height / 2 + 150, 4, config.height - 300, {
+    // 2. Wider Launch Rail (Right side)
+    const railWidth = 10;
+    const railX = config.width - 35; // Moved left to make it wider
+    const rail = Bodies.rectangle(railX, config.height / 2 + 150, railWidth, config.height - 300, {
         isStatic: true,
         render: { fillStyle: '#00ffff', strokeStyle: '#00ffff', lineWidth: 2 }
     });
     Composite.add(world, rail);
 
     // 3. Expanded Pin Area
-    const pinAreaWidth = 440;
+    const pinAreaWidth = 420;
     const pinAreaHeight = 400;
-    const pinAreaX = (config.width - pinAreaWidth) / 2 + 10;
+    const pinAreaX = (config.width - pinAreaWidth) / 2 + 5;
     const pinAreaY = 220;
     const pinSpacingX = 40;
     const pinSpacingY = 35;
@@ -123,7 +122,8 @@ function createBoard() {
             const x = pinAreaX + (c * pinSpacingX) + (r % 2 === 0 ? 0 : pinSpacingX / 2);
             const y = pinAreaY + (r * pinSpacingY);
             
-            if (x < railX - 20) {
+            // Ensure pins don't overlap with the wider rail
+            if (x < railX - 25) {
                 const pin = Bodies.circle(x, y, config.pinRadius, { 
                     isStatic: true, 
                     render: { fillStyle: '#00ff00', strokeStyle: '#00ff00', lineWidth: 1 } 
@@ -177,7 +177,8 @@ function updateLight(time) {
 
 // Shooting Logic
 function startCharging() {
-    if (ballCount <= 0 || isGameOver || isCharging || !isLightStopped) return;
+    // CRITICAL: Cannot shoot if a ball is already in play
+    if (ballCount <= 0 || isGameOver || isCharging || !isLightStopped || activeBalls.length > 0) return;
     isCharging = true;
     chargeStartTime = Date.now();
     chargeContainer.style.display = 'block';
@@ -207,7 +208,8 @@ function releaseAndShoot() {
     statusMsg.innerText = "BALL IN PLAY";
     updateUI();
 
-    const spawnX = config.width - 10;
+    // Spawn ball in the wider rail channel
+    const spawnX = config.width - 17;
     const spawnY = config.height - 40;
 
     const ball = Bodies.circle(spawnX, spawnY, config.ballRadius, {
@@ -310,4 +312,4 @@ stopLightBtn.addEventListener('click', stopLight);
 // Initialize
 createBoard();
 updateUI();
-console.log("Pachin Cyber Edition v1.1.2 initialized!");
+console.log("Pachin Cyber Edition v1.1.3 initialized!");
