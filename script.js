@@ -9,7 +9,6 @@ const config = {
     initialBalls: 10,
     winReward: 5,
     maxChargeTime: 1500,
-    // Power tuned for vertical launch
     minForceY: -0.005,
     maxForceY: -0.025,
     numGates: 10,
@@ -40,7 +39,7 @@ const render = Render.create({
         width: config.width,
         height: config.height,
         wireframes: false,
-        background: '#111',
+        background: 'transparent', // Let CSS handle background
         pixelRatio: window.devicePixelRatio || 1
     }
 });
@@ -62,80 +61,85 @@ const chargeBar = document.getElementById('charge-bar');
 function createBoard() {
     // Thicker walls
     const walls = [
-        Bodies.rectangle(-50, config.height / 2, 100, config.height + 200, { isStatic: true, render: { fillStyle: '#333' } }), // Left
-        Bodies.rectangle(config.width + 50, config.height / 2, 100, config.height + 200, { isStatic: true, render: { fillStyle: '#333' } }) // Right
+        Bodies.rectangle(-50, config.height / 2, 100, config.height + 200, { isStatic: true, render: { fillStyle: '#00ffff', opacity: 0.2 } }), // Left
+        Bodies.rectangle(config.width + 50, config.height / 2, 100, config.height + 200, { isStatic: true, render: { fillStyle: '#00ffff', opacity: 0.2 } }) // Right
     ];
     Composite.add(world, walls);
 
-    // Smooth Top Arch (Using high-density segments for a true curve)
+    // 1. Top Arch (Blue Neon) - Large semicircle as per sketch
     const archSegments = 80;
-    const archRadius = config.width / 2 - 5;
+    const archRadius = config.width / 2 - 10;
     const centerX = config.width / 2;
-    const centerY = 160;
+    const centerY = 180;
 
     for (let i = 0; i <= archSegments; i++) {
         const angle = Math.PI + (i / archSegments) * Math.PI;
         const x = centerX + Math.cos(angle) * archRadius;
-        const y = centerY + Math.sin(angle) * 120; // Slightly elliptical for better flow
+        const y = centerY + Math.sin(angle) * 150;
         
-        const segment = Bodies.rectangle(x, y, 12, 10, {
+        const segment = Bodies.rectangle(x, y, 10, 6, {
             isStatic: true,
             angle: angle + Math.PI / 2,
             friction: 0,
             restitution: 0.8,
-            render: { fillStyle: '#ffcc00' }
+            render: { fillStyle: '#00ffff', strokeStyle: '#00ffff', lineWidth: 2 }
         });
         Composite.add(world, segment);
     }
 
-    // Launch Rail (Right side) - Positioned to create a narrow channel
+    // 2. Launch Rail (Right side) - Single vertical line as per sketch
     const railX = config.width - 30;
-    const rail = Bodies.rectangle(railX, config.height / 2 + 150, 6, config.height - 300, {
+    const rail = Bodies.rectangle(railX, config.height / 2 + 150, 4, config.height - 300, {
         isStatic: true,
-        render: { fillStyle: '#555' }
+        render: { fillStyle: '#00ffff', strokeStyle: '#00ffff', lineWidth: 2 }
     });
     Composite.add(world, rail);
 
-    // Pins (V-shaped pattern)
-    const rows = 12;
+    // 3. Pin Area (Green Square with X) - Pins arranged in a square grid
+    const pinAreaSize = 300;
+    const pinAreaX = (config.width - pinAreaSize) / 2 - 15;
+    const pinAreaY = 250;
+    const pinSpacing = 40;
+    const rows = Math.floor(pinAreaSize / pinSpacing);
+    const cols = Math.floor(pinAreaSize / pinSpacing);
+
     for (let r = 0; r < rows; r++) {
-        const cols = 8 - (r % 2);
-        const rowWidth = cols * 40;
-        const startX = (config.width - rowWidth) / 2 - 25;
         for (let c = 0; c < cols; c++) {
-            const x = startX + (c * 40);
-            const y = 240 + (r * 35);
+            const x = pinAreaX + (c * pinSpacing) + (r % 2 === 0 ? 0 : pinSpacing / 2);
+            const y = pinAreaY + (r * pinSpacing);
             const pin = Bodies.circle(x, y, config.pinRadius, { 
                 isStatic: true, 
-                render: { fillStyle: '#ccc' } 
+                render: { fillStyle: '#00ff00', strokeStyle: '#00ff00', lineWidth: 1 } 
             });
             Composite.add(world, pin);
         }
     }
 
-    // 10 Gates at the bottom
+    // 4. Bottom Gates (Blue Vertical Lines)
     const startX = (config.width - (config.numGates * config.gateWidth)) / 2 - 20;
     for (let i = 0; i < config.numGates; i++) {
         const x = startX + (i * config.gateWidth) + config.gateWidth / 2;
         
-        const divider = Bodies.rectangle(x - config.gateWidth / 2, config.height - 60, 4, 60, {
+        // Vertical Divider Line
+        const divider = Bodies.rectangle(x - config.gateWidth / 2, config.height - 60, 2, 80, {
             isStatic: true,
-            render: { fillStyle: '#ffcc00' }
+            render: { fillStyle: '#00ffff' }
         });
         Composite.add(world, divider);
 
+        // Sensor Gate
         const gate = Bodies.rectangle(x, config.height - 40, config.gateWidth - 10, 20, {
             isStatic: true,
             isSensor: true,
             label: `gate_${i}`,
-            render: { fillStyle: '#222', opacity: 0.5 }
+            render: { fillStyle: 'transparent' }
         });
         Composite.add(world, gate);
 
         if (i === config.numGates - 1) {
-            const lastDivider = Bodies.rectangle(x + config.gateWidth / 2, config.height - 60, 4, 60, {
+            const lastDivider = Bodies.rectangle(x + config.gateWidth / 2, config.height - 60, 2, 80, {
                 isStatic: true,
-                render: { fillStyle: '#ffcc00' }
+                render: { fillStyle: '#00ffff' }
             });
             Composite.add(world, lastDivider);
         }
@@ -183,12 +187,10 @@ function releaseAndShoot() {
     chargeBar.style.width = '0%';
 
     ballCount--;
-    // DO NOT reset isLightStopped here. Wait until ball is gone.
     shootBtn.disabled = true;
     statusMsg.innerText = "BALL IN PLAY";
     updateUI();
 
-    // Spawn ball at the bottom of the rail channel (between rail and right wall)
     const spawnX = config.width - 15;
     const spawnY = config.height - 40;
 
@@ -196,13 +198,12 @@ function releaseAndShoot() {
         restitution: 0.5,
         friction: 0,
         label: 'ball',
-        render: { fillStyle: '#eee' }
+        render: { fillStyle: '#ffffff', strokeStyle: '#00ffff', lineWidth: 2 }
     });
 
     activeBalls.push(ball);
     Composite.add(world, ball);
 
-    // Apply force: Straight UP
     const forceY = config.minForceY + (config.maxForceY - config.minForceY) * chargeRatio;
     Body.applyForce(ball, ball.position, { x: 0, y: forceY });
 }
@@ -237,16 +238,15 @@ function removeBall(ball) {
     Composite.remove(world, ball);
     activeBalls = activeBalls.filter(b => b !== ball);
     
-    // Reset light ONLY when all balls are gone
     if (activeBalls.length === 0 && !isGameOver) {
         isLightStopped = false;
         shootBtn.disabled = true;
-        statusMsg.innerText = "STOP LIGHT FIRST";
+        statusMsg.innerText = "STOP LIGHT";
     }
 }
 
 function updateUI() {
-    ballCountDisplay.innerText = `Balls: ${ballCount}`;
+    ballCountDisplay.innerText = ballCount;
 }
 
 // Game Loop Check
@@ -254,17 +254,17 @@ Events.on(engine, 'afterUpdate', () => {
     const time = Date.now();
     updateLight(time);
 
-    // Update gate visuals
+    // Update gate visuals (Neon Glow for active gate)
     const bodies = Composite.allBodies(world);
     bodies.forEach(body => {
         if (body.label.startsWith('gate_')) {
             const idx = parseInt(body.label.split('_')[1]);
             if (idx === (isLightStopped ? activeGateIndex : lightIndex)) {
-                body.render.fillStyle = '#00ff00';
+                body.render.fillStyle = '#ccff00';
                 body.render.opacity = 0.8;
             } else {
-                body.render.fillStyle = '#222';
-                body.render.opacity = 0.5;
+                body.render.fillStyle = 'transparent';
+                body.render.opacity = 0.1;
             }
         }
     });
@@ -294,4 +294,4 @@ stopLightBtn.addEventListener('click', stopLight);
 // Initialize
 createBoard();
 updateUI();
-console.log("Pachin initialized successfully!");
+console.log("Pachin Cyber Edition initialized!");
