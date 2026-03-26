@@ -66,12 +66,12 @@ function createBoard() {
     ];
     Composite.add(world, walls);
 
-    // 1. Expanded Top Arch (Blue Neon) - Full width, no margins
+    // 1. Expanded Top Arch (Blue Neon) - Overlapping edges to ensure no gaps
     const archSegments = 100;
-    const archRadiusX = config.width / 2; // Exactly half width
-    const archRadiusY = 200; // Slightly taller for better curve
+    const archRadiusX = config.width / 2 + 10; // Slightly wider than canvas
+    const archRadiusY = 220; // Slightly taller
     const centerX = config.width / 2;
-    const centerY = 220; // Adjusted to fit the top
+    const centerY = 240; // Adjusted to fit the top
 
     for (let i = 0; i <= archSegments; i++) {
         const angle = Math.PI + (i / archSegments) * Math.PI;
