@@ -51,7 +51,7 @@
         initialBalls: 10,
         winReward: 5,
         maxChargeTime: 1500,
-        minForceY: -80,
+        minForceY: -20,
         maxForceY: -450,
         numGates: 10,
         gateWidth: 40,
@@ -73,7 +73,7 @@
     // Planck.js World Setup
     let world;
     try {
-        world = planck.World(Vec2(0, 20.0));
+        world = planck.World(Vec2(0, 70.0));
     } catch (e) {
         showError("Failed to initialize planck.World: " + e.message);
         return;
