@@ -1,4 +1,4 @@
-// Pachin v1.5.3 - Planck.js Stable Edition
+// Pachin v1.5.4 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -190,7 +190,7 @@
         // Randomness in force: -5 to -30
         const randomForce = (Math.random() * -25) - 5;
         
-        // FIXED: Apply Math.round() to prevent floating point bugs
+        // Apply Math.round() to prevent floating point bugs
         const finalForceY = Math.round(baseForceY + randomForce);
 
         // NaN Protection
@@ -204,7 +204,12 @@
         forceValueDisplay.innerText = finalForceY.toFixed(2);
         console.log(`Shoot: duration=${duration}ms, baseForce=${baseForceY.toFixed(2)}, finalForce=${finalForceY.toFixed(2)}`);
 
-        ball.setUserData({ type: 'ball', launched: true });
+        // Added spawnTime for launch protection
+        ball.setUserData({ 
+            type: 'ball', 
+            launched: true,
+            spawnTime: Date.now() 
+        });
         activeBalls.push(ball);
 
         // Use setLinearVelocity with a smaller divisor (5) for more power
@@ -340,16 +345,24 @@
             const pos = ball.getPosition();
             const pixelX = pos.x * config.scale;
             const pixelY = pos.y * config.scale;
+            const now = Date.now();
 
-            if (pixelX > 465 && pixelY > 780 && data.launched) {
-                ballCount++;
-                data.remove = true;
-                console.log("Ball recovered!");
-            }
+            // Launch Protection: Ignore cleanup for the first 500ms
+            const isProtected = (now - data.spawnTime) < 500;
 
-            if (pixelY < -200) {
-                data.remove = true;
-                console.log("Ball escaped top! Auto-cleaning...");
+            if (!isProtected) {
+                // Ball Recovery
+                if (pixelX > 465 && pixelY > 780 && data.launched) {
+                    ballCount++;
+                    data.remove = true;
+                    console.log("Ball recovered!");
+                }
+
+                // Relaxed Escape Limit: -2000px to prevent jitter-induced deletion
+                if (pixelY < -2000) {
+                    data.remove = true;
+                    console.log("Ball escaped top! Auto-cleaning...");
+                }
             }
 
             if (data.remove || pixelY > config.height + 50) {
@@ -385,7 +398,7 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.5.3 initialized!");
+    console.log("Pachin Planck Edition v1.5.4 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
