@@ -1,4 +1,4 @@
-// Pachin v1.3.7 - Planck.js Stable Edition
+// Pachin v1.3.8 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -18,7 +18,7 @@
         winReward: 5,
         maxChargeTime: 1500,
         minForceY: -40,
-        maxForceY: -1000, // Adjusted max force
+        maxForceY: -2000, // Adjusted max force
         numGates: 10,
         gateWidth: 40,
         scale: 10
@@ -167,8 +167,8 @@
             density: 1.0
         });
 
-        // Exponential Curve for force: y = -1000 * (1 - e^(-0.00233 * x))
-        const baseForceY = -1000 * (1 - Math.exp(-0.00233 * duration));
+        // Exponential Curve for force: y = -2000 * (1 - e^(-0.00233 * x))
+        const baseForceY = -2000 * (1 - Math.exp(-0.00233 * duration));
         
         // Randomness in force: -50 to -150
         const randomForce = (Math.random() * -100) - 50;
@@ -346,13 +346,13 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.3.7 initialized!");
+    console.log("Pachin Planck Edition v1.3.8 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Ball Radius:", config.ballRadius);
     console.log("Pin Radius:", config.pinRadius);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
-    console.log("Force Formula: y = -1000 * (1 - e^(-0.00233 * x))");
+    console.log("Force Formula: y = -2000 * (1 - e^(-0.00233 * x))");
     console.log("Win Reward:", config.winReward);
     console.log("Scale:", config.scale);
     console.log("-----------------------------");
