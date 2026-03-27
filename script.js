@@ -1,4 +1,4 @@
-// Pachin v1.5.2 - Planck.js Stable Edition
+// Pachin v1.5.3 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -189,7 +189,9 @@
         
         // Randomness in force: -5 to -30
         const randomForce = (Math.random() * -25) - 5;
-        const finalForceY = baseForceY + randomForce;
+        
+        // FIXED: Apply Math.round() to prevent floating point bugs
+        const finalForceY = Math.round(baseForceY + randomForce);
 
         // NaN Protection
         if (isNaN(finalForceY)) {
@@ -383,7 +385,7 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.5.2 initialized!");
+    console.log("Pachin Planck Edition v1.5.3 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
