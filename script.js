@@ -1,4 +1,4 @@
-// Pachin v1.4.9 - Planck.js Stable Edition
+// Pachin v1.5.0 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -7,9 +7,7 @@
     }
 
     // CRITICAL FIX: Increase the engine's speed limit to allow high-force shots
-    if (planck.internal && planck.internal.Settings) {
-        planck.internal.Settings.maxTranslation = 100.0;
-    } else if (planck.Settings) {
+    if (planck.Settings) {
         planck.Settings.maxTranslation = 100.0;
     }
 
@@ -44,7 +42,7 @@
     let lastLightUpdate = 0;
 
     // Planck.js World Setup
-    const world = planck.World(Vec2(0, 98.1)); // Gravity: 98.1
+    const world = planck.World(Vec2(0, 30.0)); // Gravity: 30.0 (Reduced for better control)
     const canvas = document.getElementById('pachinko-canvas');
     const ctx = canvas.getContext('2d');
 
@@ -65,13 +63,13 @@
     function createBoard() {
         const ground = world.createBody();
         
-        // 1. THICK Walls (Prevent tunneling)
+        // 1. THICK Walls (Prevent tunneling) - Using halfWidth/halfHeight correctly
         // Left Wall
-        ground.createFixture(planck.Box(50 / config.scale, config.height / config.scale, Vec2(-50 / config.scale, config.height / (2 * config.scale))), { friction: 0 });
+        ground.createFixture(planck.Box(25 / config.scale, config.height / (2 * config.scale), Vec2(-25 / config.scale, config.height / (2 * config.scale))), { friction: 0 });
         // Right Wall
-        ground.createFixture(planck.Box(50 / config.scale, config.height / config.scale, Vec2((config.width + 50) / config.scale, config.height / (2 * config.scale))), { friction: 0 });
+        ground.createFixture(planck.Box(25 / config.scale, config.height / (2 * config.scale), Vec2((config.width + 25) / config.scale, config.height / (2 * config.scale))), { friction: 0 });
         // Safety Ceiling (Prevent balls from flying out the top)
-        ground.createFixture(planck.Box(config.width / config.scale, 50 / config.scale, Vec2(config.width / (2 * config.scale), -50 / config.scale)), { friction: 0 });
+        ground.createFixture(planck.Box(config.width / (2 * config.scale), 25 / config.scale, Vec2(config.width / (2 * config.scale), -25 / config.scale)), { friction: 0 });
 
         // 2. Smooth Top Arch (Chain Shape)
         const archSegments = 100;
@@ -191,7 +189,9 @@
         ball.setUserData({ type: 'ball', launched: true });
         activeBalls.push(ball);
 
-        ball.applyLinearImpulse(Vec2(0, finalForceY), ball.getWorldCenter());
+        // FIXED: Use setLinearVelocity for more direct control over speed
+        // finalForceY is around -500, so velocity will be around -50 m/s
+        ball.setLinearVelocity(Vec2(0, finalForceY / 10));
     }
 
     function stopLight() {
@@ -293,24 +293,30 @@
                     ctx.closePath();
                 } else if (type === 'polygon') {
                     const idx = data ? data.index : -1;
+                    ctx.beginPath();
                     if (idx !== -1) {
                         const isActive = (isLightStopped ? activeGateIndex : lightIndex) === idx;
-                        ctx.beginPath();
                         ctx.fillStyle = isActive ? '#ccff00' : 'rgba(0, 255, 255, 0.1)';
                         if (isActive) {
                             ctx.shadowBlur = 15;
                             ctx.shadowColor = '#ccff00';
                         }
-                        const vertices = shape.m_vertices;
-                        if (vertices && vertices.length > 0) {
-                            ctx.moveTo(vertices[0].x * config.scale, vertices[0].y * config.scale);
-                            for (let i = 1; i < vertices.length; i++) {
-                                ctx.lineTo(vertices[i].x * config.scale, vertices[i].y * config.scale);
-                            }
-                            ctx.fill();
-                        }
-                        ctx.closePath();
+                    } else {
+                        // FIXED: Draw walls and ceiling in a visible color for debugging
+                        ctx.fillStyle = 'rgba(100, 100, 100, 0.3)';
+                        ctx.strokeStyle = '#555555';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
                     }
+                    const vertices = shape.m_vertices;
+                    if (vertices && vertices.length > 0) {
+                        ctx.moveTo(vertices[0].x * config.scale, vertices[0].y * config.scale);
+                        for (let i = 1; i < vertices.length; i++) {
+                            ctx.lineTo(vertices[i].x * config.scale, vertices[i].y * config.scale);
+                        }
+                        ctx.fill();
+                    }
+                    ctx.closePath();
                 }
                 ctx.restore();
             }
@@ -324,14 +330,12 @@
             const pixelX = pos.x * config.scale;
             const pixelY = pos.y * config.scale;
 
-            // Ball Recovery
             if (pixelX > 465 && pixelY > 780 && data.launched) {
                 ballCount++;
                 data.remove = true;
                 console.log("Ball recovered!");
             }
 
-            // CRITICAL: Auto-cleanup for balls that fly out of bounds (Tunneling protection)
             if (pixelY < -200) {
                 data.remove = true;
                 console.log("Ball escaped top! Auto-cleaning...");
@@ -370,7 +374,7 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.4.9 initialized!");
+    console.log("Pachin Planck Edition v1.5.0 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
