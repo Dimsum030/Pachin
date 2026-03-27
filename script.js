@@ -1,12 +1,46 @@
-// Pachin v1.2.2 - Planck.js Stable Edition
+// Pachin v1.2.3 - Planck.js Debug Edition
 (function() {
+    // Error Display Overlay
+    const errorOverlay = document.createElement('div');
+    errorOverlay.style.position = 'absolute';
+    errorOverlay.style.top = '0';
+    errorOverlay.style.left = '0';
+    errorOverlay.style.width = '100%';
+    errorOverlay.style.height = '100%';
+    errorOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+    errorOverlay.style.color = '#ff0000';
+    errorOverlay.style.padding = '20px';
+    errorOverlay.style.fontFamily = 'monospace';
+    errorOverlay.style.fontSize = '12px';
+    errorOverlay.style.zIndex = '9999';
+    errorOverlay.style.display = 'none';
+    errorOverlay.style.pointerEvents = 'none';
+    errorOverlay.style.overflowY = 'auto';
+    document.body.appendChild(errorOverlay);
+
+    function showError(msg) {
+        errorOverlay.style.display = 'block';
+        errorOverlay.innerHTML += `<div>[ERROR] ${msg}</div>`;
+        console.error(msg);
+    }
+
+    window.onerror = function(message, source, lineno, colno, error) {
+        showError(`${message} at ${source}:${lineno}:${colno}`);
+        return false;
+    };
+
     const planck = window.planck;
     if (!planck) {
-        alert("CRITICAL ERROR: Planck.js failed to load from CDN. Please check your internet connection.");
+        showError("Planck.js failed to load from CDN.");
         return;
     }
 
+    // In v0.3.3, Vec2 is often planck.Vec2
     const Vec2 = planck.Vec2;
+    if (!Vec2) {
+        showError("planck.Vec2 is undefined. Check Planck.js version.");
+        return;
+    }
 
     // Game Configuration
     const config = {
@@ -37,8 +71,14 @@
     let lastLightUpdate = 0;
 
     // Planck.js World Setup
-    // In v0.3.3, planck.World is a factory function
-    const world = planck.World(Vec2(0, 9.8));
+    let world;
+    try {
+        world = planck.World(Vec2(0, 9.8));
+    } catch (e) {
+        showError("Failed to initialize planck.World: " + e.message);
+        return;
+    }
+
     const canvas = document.getElementById('pachinko-canvas');
     const ctx = canvas.getContext('2d');
 
@@ -119,9 +159,8 @@
                     ground.createFixture(planck.Edge(Vec2((x + config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x + config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
                 }
             }
-            console.log("Pachin: Board initialized successfully.");
         } catch (e) {
-            console.error("Pachin: Error creating board:", e);
+            showError("Error creating board: " + e.message);
         }
     }
 
@@ -316,7 +355,7 @@
                 gameOverOverlay.classList.add('visible');
             }
         } catch (e) {
-            console.error("Pachin: Error in animation loop:", e);
+            showError("Error in animation loop: " + e.message);
         }
 
         requestAnimationFrame(animate);
@@ -333,5 +372,5 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.2.2 initialized!");
+    console.log("Pachin Planck Edition v1.2.3 initialized!");
 })();
