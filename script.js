@@ -1,4 +1,4 @@
-// Pachin v1.3.1 - Planck.js Stable Edition
+// Pachin v1.3.2 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -37,7 +37,7 @@
     let lastLightUpdate = 0;
 
     // Planck.js World Setup
-    const world = planck.World(Vec2(0, 70.0)); // Gravity: 70.0
+    const world = planck.World(Vec2(0, 98.1)); // Gravity: 98.1
     const canvas = document.getElementById('pachinko-canvas');
     const ctx = canvas.getContext('2d');
 
@@ -75,7 +75,7 @@
             const y = centerY + Math.sin(angle) * archRadiusY;
             archVertices.push(Vec2(x, y));
         }
-        ground.createFixture(planck.Chain(archVertices), { friction: 0, restitution: 0.8 });
+        ground.createFixture(planck.Chain(archVertices), { friction: 0.2, restitution: 0.2 });
 
         // Launch Rail
         const railX = (config.width - 35) / config.scale;
@@ -159,15 +159,18 @@
             position: Vec2(spawnX, spawnY),
             bullet: true
         });
+        // Asymptotic Curve for force: grows faster at the beginning
+        const asymptoticRatio = Math.pow(chargeRatio, 0.5);
+        
         ball.createFixture(planck.Circle(config.ballRadius / config.scale), {
-            friction: 0,
-            restitution: 0.5,
+            friction: 0.1,
+            restitution: 0.4,
             density: 1.0
         });
         
         // Randomness in force: 0 to -5
         const randomForce = Math.random() * -5;
-        const baseForceY = config.minForceY + (config.maxForceY - config.minForceY) * chargeRatio;
+        const baseForceY = config.minForceY + (config.maxForceY - config.minForceY) * asymptoticRatio;
         const finalForceY = baseForceY + randomForce;
 
         ball.setUserData({ type: 'ball', launched: true });
@@ -341,5 +344,5 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.3.1 initialized!");
+    console.log("Pachin Planck Edition v1.3.2 initialized!");
 })();
