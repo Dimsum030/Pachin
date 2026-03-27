@@ -1,4 +1,4 @@
-// Pachin v1.2.8 - Planck.js Stable Edition
+// Pachin v1.2.9 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -188,11 +188,15 @@
     world.on('begin-contact', (contact) => {
         const fixtureA = contact.getFixtureA();
         const fixtureB = contact.getFixtureB();
-        const dataA = fixtureA.getUserData();
-        const dataB = fixtureB.getUserData();
+        const bodyA = fixtureA.getBody();
+        const bodyB = fixtureB.getBody();
+        const bodyDataA = bodyA.getUserData();
+        const bodyDataB = bodyB.getUserData();
+        const fixDataA = fixtureA.getUserData();
+        const fixDataB = fixtureB.getUserData();
 
-        const ballBody = (dataA && dataA.type === 'ball') ? fixtureA.getBody() : ((dataB && dataB.type === 'ball') ? fixtureB.getBody() : null);
-        const gateData = (dataA && dataA.type === 'gate') ? dataA : ((dataB && dataB.type === 'gate') ? dataB : null);
+        const ballBody = (bodyDataA && bodyDataA.type === 'ball') ? bodyA : ((bodyDataB && bodyDataB.type === 'ball') ? bodyB : null);
+        const gateData = (fixDataA && fixDataA.type === 'gate') ? fixDataA : ((fixDataB && fixDataB.type === 'gate') ? fixDataB : null);
 
         if (ballBody && gateData) {
             if (gateData.index === activeGateIndex) {
@@ -337,5 +341,5 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.2.8 initialized!");
+    console.log("Pachin Planck Edition v1.2.9 initialized!");
 })();
