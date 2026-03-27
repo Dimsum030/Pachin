@@ -1,9 +1,15 @@
-// Pachin v1.3.8 - Planck.js Stable Edition
+// Pachin v1.3.9 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
         alert("CRITICAL ERROR: Planck.js failed to load from CDN.");
         return;
+    }
+
+    // CRITICAL FIX: Increase the engine's speed limit to allow high-force shots
+    // Default maxTranslation is 2.0, which caps speed at 120m/s (1200px/s at scale 10)
+    if (planck.Settings) {
+        planck.Settings.maxTranslation = 10.0; // Allow up to 600m/s
     }
 
     const Vec2 = planck.Vec2;
@@ -140,7 +146,6 @@
         if (!isCharging) return;
         
         const duration = Math.min(Date.now() - chargeStartTime, config.maxChargeTime);
-        const chargeRatio = duration / config.maxChargeTime;
         
         isCharging = false;
         chargeContainer.style.display = 'none';
@@ -160,19 +165,21 @@
             bullet: true
         });
         
-        // RESTORED: Create the ball's shape and physical properties
         ball.createFixture(planck.Circle(config.ballRadius / config.scale), {
             friction: 0.1,
             restitution: 0.4,
             density: 1.0
         });
 
-        // Exponential Curve for force: y = -2000 * (1 - e^(-0.00233 * x))
-        const baseForceY = -2000 * (1 - Math.exp(-0.00233 * duration));
+        // FIXED: Use config.maxForceY and the exponential formula
+        // y = maxForceY * (1 - e^(-0.00233 * x))
+        const baseForceY = config.maxForceY * (1 - Math.exp(-0.00233 * duration));
         
         // Randomness in force: -50 to -150
         const randomForce = (Math.random() * -100) - 50;
         const finalForceY = baseForceY + randomForce;
+
+        console.log(`Shoot: duration=${duration}ms, baseForce=${baseForceY.toFixed(2)}, finalForce=${finalForceY.toFixed(2)}`);
 
         ball.setUserData({ type: 'ball', launched: true });
         activeBalls.push(ball);
@@ -200,10 +207,13 @@
         const fixDataB = fixtureB.getUserData();
 
         const ballBody = (bodyDataA && bodyDataA.type === 'ball') ? bodyA : ((bodyDataB && bodyDataB.type === 'ball') ? bodyB : null);
-        const gateData = (fixDataA && fixDataA.type === 'gate') ? fixDataA : ((fixDataB && fixDataB.type === 'gate') ? fixDataB : null);
+        const gateData = (fixDataA && fixDataA.type === 'gate') ? dataA : ((fixDataB && fixDataB.type === 'gate') ? fixDataB : null);
 
-        if (ballBody && gateData) {
-            if (gateData.index === activeGateIndex) {
+        // Re-check gateData because of potential variable name error in previous version
+        const actualGateData = (fixDataA && fixDataA.type === 'gate') ? fixDataA : ((fixDataB && fixDataB.type === 'gate') ? fixDataB : null);
+
+        if (ballBody && actualGateData) {
+            if (actualGateData.index === activeGateIndex) {
                 ballCount += config.winReward;
                 updateUI();
             }
@@ -306,7 +316,6 @@
             const pixelX = pos.x * config.scale;
             const pixelY = pos.y * config.scale;
 
-            // Ball Recovery: If ball falls back to the launch rail bottom (moved down)
             if (pixelX > 465 && pixelY > 780 && data.launched) {
                 ballCount++;
                 data.remove = true;
@@ -346,14 +355,10 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.3.8 initialized!");
+    console.log("Pachin Planck Edition v1.3.9 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
-    console.log("Ball Radius:", config.ballRadius);
-    console.log("Pin Radius:", config.pinRadius);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
-    console.log("Force Formula: y = -2000 * (1 - e^(-0.00233 * x))");
-    console.log("Win Reward:", config.winReward);
-    console.log("Scale:", config.scale);
+    console.log("Force Formula: y = maxForceY * (1 - e^(-0.00233 * x))");
     console.log("-----------------------------");
 })();
