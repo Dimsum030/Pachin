@@ -1,4 +1,4 @@
-// Pachin v1.3.2 - Planck.js Stable Edition
+// Pachin v1.3.3 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -18,7 +18,7 @@
         winReward: 5,
         maxChargeTime: 1500,
         minForceY: -40,
-        maxForceY: -400, // Adjusted max force
+        maxForceY: -777, // Adjusted max force
         numGates: 10,
         gateWidth: 40,
         scale: 10
@@ -344,5 +344,5 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.3.2 initialized!");
+    console.log("Pachin Planck Edition v1.3.3 initialized!");
 })();
