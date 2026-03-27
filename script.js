@@ -1,4 +1,4 @@
-// Pachin v1.4.8 - Planck.js Stable Edition
+// Pachin v1.4.9 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -25,7 +25,7 @@
         winReward: 5,
         maxChargeTime: 1500,
         minForceY: -40,
-        maxForceY: -500, // Adjusted max force
+        maxForceY: -500, // Current max force
         numGates: 10,
         gateWidth: 40,
         scale: 10
@@ -65,11 +65,15 @@
     function createBoard() {
         const ground = world.createBody();
         
-        // Walls
-        ground.createFixture(planck.Edge(Vec2(0, 0), Vec2(0, config.height / config.scale)), { friction: 0 });
-        ground.createFixture(planck.Edge(Vec2(config.width / config.scale, 0), Vec2(config.width / config.scale, config.height / config.scale)), { friction: 0 });
+        // 1. THICK Walls (Prevent tunneling)
+        // Left Wall
+        ground.createFixture(planck.Box(50 / config.scale, config.height / config.scale, Vec2(-50 / config.scale, config.height / (2 * config.scale))), { friction: 0 });
+        // Right Wall
+        ground.createFixture(planck.Box(50 / config.scale, config.height / config.scale, Vec2((config.width + 50) / config.scale, config.height / (2 * config.scale))), { friction: 0 });
+        // Safety Ceiling (Prevent balls from flying out the top)
+        ground.createFixture(planck.Box(config.width / config.scale, 50 / config.scale, Vec2(config.width / (2 * config.scale), -50 / config.scale)), { friction: 0 });
 
-        // 1. Smooth Top Arch (Chain Shape - Reverted)
+        // 2. Smooth Top Arch (Chain Shape)
         const archSegments = 100;
         const archRadiusX = (config.width / 2 + 10) / config.scale;
         const archRadiusY = 220 / config.scale;
@@ -85,11 +89,11 @@
         }
         ground.createFixture(planck.Chain(archVertices), { friction: 0.2, restitution: 0.2 });
 
-        // 2. Launch Rail
+        // 3. Launch Rail
         const railX = (config.width - 35) / config.scale;
         ground.createFixture(planck.Edge(Vec2(railX, (config.height - 150) / config.scale), Vec2(railX, 300 / config.scale)), { friction: 0 });
 
-        // 3. Pin Area
+        // 4. Pin Area
         const pinAreaWidth = 440;
         const pinAreaHeight = 400;
         const pinAreaX = (config.width - pinAreaWidth) / 2 + 10;
@@ -111,7 +115,7 @@
             }
         }
 
-        // 4. Bottom Gates
+        // 5. Bottom Gates
         const startX = (config.width - (config.numGates * config.gateWidth)) / 2 - 20;
         for (let i = 0; i < config.numGates; i++) {
             const x = startX + (i * config.gateWidth) + config.gateWidth / 2;
@@ -142,7 +146,6 @@
         const percent = (duration / config.maxChargeTime) * 100;
         chargeBar.style.width = `${percent}%`;
         
-        // Real-time force display
         const currentBaseForce = config.maxForceY * (1 - Math.exp(-0.00233 * duration));
         forceValueDisplay.innerText = currentBaseForce.toFixed(2);
         
@@ -178,10 +181,7 @@
             density: 1.0
         });
 
-        // Exponential Curve for force: y = -500 * (1 - e^(-0.00233 * x))
         const baseForceY = config.maxForceY * (1 - Math.exp(-0.00233 * duration));
-        
-        // Randomness in force: -5 to -30
         const randomForce = (Math.random() * -25) - 5;
         const finalForceY = baseForceY + randomForce;
 
@@ -192,12 +192,6 @@
         activeBalls.push(ball);
 
         ball.applyLinearImpulse(Vec2(0, finalForceY), ball.getWorldCenter());
-        
-        // Log velocity after 1 frame to check for clamping
-        setTimeout(() => {
-            const vel = ball.getLinearVelocity();
-            console.log(`Velocity after launch: ${vel.y.toFixed(2)} m/s`);
-        }, 16);
     }
 
     function stopLight() {
@@ -330,10 +324,17 @@
             const pixelX = pos.x * config.scale;
             const pixelY = pos.y * config.scale;
 
+            // Ball Recovery
             if (pixelX > 465 && pixelY > 780 && data.launched) {
                 ballCount++;
                 data.remove = true;
                 console.log("Ball recovered!");
+            }
+
+            // CRITICAL: Auto-cleanup for balls that fly out of bounds (Tunneling protection)
+            if (pixelY < -200) {
+                data.remove = true;
+                console.log("Ball escaped top! Auto-cleaning...");
             }
 
             if (data.remove || pixelY > config.height + 50) {
@@ -369,10 +370,10 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.4.8 initialized!");
+    console.log("Pachin Planck Edition v1.4.9 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
-    console.log("Force Formula: y = -500 * (1 - e^(-0.00233 * x))");
+    console.log("Force Formula: y = maxForceY * (1 - e^(-0.00233 * x))");
     console.log("-----------------------------");
 })();
