@@ -1,4 +1,4 @@
-// Pachin v1.2.7 - Planck.js Stable Edition
+// Pachin v1.2.8 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -337,5 +337,5 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.2.7 initialized!");
+    console.log("Pachin Planck Edition v1.2.8 initialized!");
 })();
