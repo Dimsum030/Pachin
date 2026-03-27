@@ -1,4 +1,4 @@
-// Pachin v1.3.5 - Planck.js Stable Edition
+// Pachin v1.3.6 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -18,7 +18,7 @@
         winReward: 5,
         maxChargeTime: 1500,
         minForceY: -40,
-        maxForceY: -999, // Adjusted max force
+        maxForceY: -1000, // Adjusted max force
         numGates: 10,
         gateWidth: 40,
         scale: 10
@@ -159,18 +159,11 @@
             position: Vec2(spawnX, spawnY),
             bullet: true
         });
-        // Asymptotic Curve for force: grows faster at the beginning
-        const asymptoticRatio = Math.pow(chargeRatio, 0.5);
-        
-        ball.createFixture(planck.Circle(config.ballRadius / config.scale), {
-            friction: 0.1,
-            restitution: 0.4,
-            density: 1.0
-        });
+        // Exponential Curve for force: y = -1000 * (1 - e^(-0.00233 * x))
+        const baseForceY = -1000 * (1 - Math.exp(-0.00233 * duration));
         
         // Randomness in force: -50 to -150
         const randomForce = (Math.random() * -100) - 50;
-        const baseForceY = config.minForceY + (config.maxForceY - config.minForceY) * asymptoticRatio;
         const finalForceY = baseForceY + randomForce;
 
         ball.setUserData({ type: 'ball', launched: true });
@@ -345,13 +338,13 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.3.5 initialized!");
+    console.log("Pachin Planck Edition v1.3.6 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Ball Radius:", config.ballRadius);
     console.log("Pin Radius:", config.pinRadius);
-    console.log("Min Force Y:", config.minForceY);
-    console.log("Max Force Y:", config.maxForceY);
+    console.log("Max Force Y (Asymptote):", config.maxForceY);
+    console.log("Force Formula: y = -1000 * (1 - e^(-0.00233 * x))");
     console.log("Win Reward:", config.winReward);
     console.log("Scale:", config.scale);
     console.log("-----------------------------");
