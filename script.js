@@ -1,4 +1,4 @@
-// Pachin v1.5.5 - Planck.js Stable Edition
+// Pachin v1.5.6 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -398,7 +398,7 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.5.5 initialized!");
+    console.log("Pachin Planck Edition v1.5.6 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Max Force Y (Asymptote):", config.maxForceY);

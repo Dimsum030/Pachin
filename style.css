@@ -29,6 +29,10 @@ body {
 }
 
 #ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
     padding: 10px 20px;
     font-size: 18px;
     font-weight: bold;
@@ -36,6 +40,7 @@ body {
     justify-content: space-between;
     z-index: 100;
     text-shadow: 0 0 10px #00ffff;
+    pointer-events: none; /* Allow clicking through UI to canvas if needed */
 }
 
 #canvas-container {
@@ -54,9 +59,10 @@ body {
 }
 
 #pachinko-canvas {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: fill; /* Force fill to eliminate gaps */
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain; /* Maintain aspect ratio */
+    aspect-ratio: 500 / 800;
 }
 
 #charge-container {
