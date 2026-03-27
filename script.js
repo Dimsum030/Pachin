@@ -1,4 +1,4 @@
-// Pachin v1.3.4 - Planck.js Stable Edition
+// Pachin v1.3.5 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -344,5 +344,15 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.3.4 initialized!");
+    
+    console.log("Pachin Planck Edition v1.3.5 initialized!");
+    console.log("--- Physics & Game Config ---");
+    console.log("Gravity:", world.getGravity().y);
+    console.log("Ball Radius:", config.ballRadius);
+    console.log("Pin Radius:", config.pinRadius);
+    console.log("Min Force Y:", config.minForceY);
+    console.log("Max Force Y:", config.maxForceY);
+    console.log("Win Reward:", config.winReward);
+    console.log("Scale:", config.scale);
+    console.log("-----------------------------");
 })();
