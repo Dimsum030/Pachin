@@ -1,4 +1,4 @@
-// Pachin v1.2.9 - Planck.js Stable Edition
+// Pachin v1.3.0 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -12,8 +12,8 @@
     const config = {
         width: 500,
         height: 800,
-        ballRadius: 7,
-        pinRadius: 3,
+        ballRadius: 10,
+        pinRadius: 5,
         initialBalls: 10,
         winReward: 5,
         maxChargeTime: 1500,
@@ -81,13 +81,13 @@
         const railX = (config.width - 35) / config.scale;
         ground.createFixture(planck.Edge(Vec2(railX, (config.height - 150) / config.scale), Vec2(railX, 300 / config.scale)), { friction: 0 });
 
-        // Pin Area
-        const pinAreaWidth = 420;
+        // Pin Area - Adjusted density for larger pins
+        const pinAreaWidth = 440;
         const pinAreaHeight = 400;
-        const pinAreaX = (config.width - pinAreaWidth) / 2 + 5;
+        const pinAreaX = (config.width - pinAreaWidth) / 2 + 10;
         const pinAreaY = 220;
-        const pinSpacingX = 40;
-        const pinSpacingY = 35;
+        const pinSpacingX = 50;
+        const pinSpacingY = 45;
         const rows = Math.floor(pinAreaHeight / pinSpacingY);
         const cols = Math.floor(pinAreaWidth / pinSpacingX);
 
@@ -341,5 +341,5 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.2.9 initialized!");
+    console.log("Pachin Planck Edition v1.3.0 initialized!");
 })();
