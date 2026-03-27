@@ -1,4 +1,4 @@
-// Pachin v1.4.5 - Planck.js Stable Edition
+// Pachin v1.4.6 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -175,8 +175,8 @@
         // Exponential Curve for force: y = -250 * (1 - e^(-0.00233 * x))
         const baseForceY = config.maxForceY * (1 - Math.exp(-0.00233 * duration));
         
-        // Randomness in force: -50 to -150
-        const randomForce = (Math.random() * -100) - 50;
+        // Randomness in force: -5 to -30
+        const randomForce = (Math.random() * -25) - 5;
         const finalForceY = baseForceY + randomForce;
 
         console.log(`Shoot: duration=${duration}ms, baseForce=${baseForceY.toFixed(2)}, finalForce=${finalForceY.toFixed(2)}`);
@@ -362,7 +362,7 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.4.5 initialized!");
+    console.log("Pachin Planck Edition v1.4.6 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
