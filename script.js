@@ -1,4 +1,4 @@
-// Pachin v1.3.9 - Planck.js Stable Edition
+// Pachin v1.4.0 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -9,7 +9,7 @@
     // CRITICAL FIX: Increase the engine's speed limit to allow high-force shots
     // Default maxTranslation is 2.0, which caps speed at 120m/s (1200px/s at scale 10)
     if (planck.Settings) {
-        planck.Settings.maxTranslation = 10.0; // Allow up to 600m/s
+        planck.Settings.maxTranslation = 20.0; // Allow up to 1200m/s
     }
 
     const Vec2 = planck.Vec2;
@@ -171,8 +171,7 @@
             density: 1.0
         });
 
-        // FIXED: Use config.maxForceY and the exponential formula
-        // y = maxForceY * (1 - e^(-0.00233 * x))
+        // Exponential Curve for force: y = maxForceY * (1 - e^(-0.00233 * x))
         const baseForceY = config.maxForceY * (1 - Math.exp(-0.00233 * duration));
         
         // Randomness in force: -50 to -150
@@ -207,13 +206,11 @@
         const fixDataB = fixtureB.getUserData();
 
         const ballBody = (bodyDataA && bodyDataA.type === 'ball') ? bodyA : ((bodyDataB && bodyDataB.type === 'ball') ? bodyB : null);
-        const gateData = (fixDataA && fixDataA.type === 'gate') ? dataA : ((fixDataB && fixDataB.type === 'gate') ? fixDataB : null);
+        const gateData = (fixDataA && fixDataA.type === 'gate') ? fixDataA : ((fixDataB && fixDataB.type === 'gate') ? fixDataB : null);
 
-        // Re-check gateData because of potential variable name error in previous version
-        const actualGateData = (fixDataA && fixDataA.type === 'gate') ? fixDataA : ((fixDataB && fixDataB.type === 'gate') ? fixDataB : null);
-
-        if (ballBody && actualGateData) {
-            if (actualGateData.index === activeGateIndex) {
+        // FIXED: Corrected variable reference to avoid crash
+        if (ballBody && gateData) {
+            if (gateData.index === activeGateIndex) {
                 ballCount += config.winReward;
                 updateUI();
             }
@@ -355,7 +352,7 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.3.9 initialized!");
+    console.log("Pachin Planck Edition v1.4.0 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
