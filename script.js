@@ -1,4 +1,4 @@
-// Pachin v1.4.3 - Planck.js Stable Edition
+// Pachin v1.4.4 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -68,28 +68,21 @@
         ground.createFixture(planck.Edge(Vec2(0, 0), Vec2(0, config.height / config.scale)), { friction: 0 });
         ground.createFixture(planck.Edge(Vec2(config.width / config.scale, 0), Vec2(config.width / config.scale, config.height / config.scale)), { friction: 0 });
 
-        // 1. THICK Top Arch (Using multiple Boxes to prevent tunneling)
+        // 1. Smooth Top Arch (Chain Shape - Reverted)
         const archSegments = 100;
         const archRadiusX = (config.width / 2 + 10) / config.scale;
         const archRadiusY = 220 / config.scale;
         const centerX = (config.width / 2) / config.scale;
         const centerY = 240 / config.scale;
-        const thickness = 20 / config.scale; // 20px thickness
-
+        
+        const archVertices = [];
         for (let i = 0; i <= archSegments; i++) {
             const angle = Math.PI + (i / archSegments) * Math.PI;
-            const x = centerX + Math.cos(angle) * (archRadiusX + thickness / 2);
-            const y = centerY + Math.sin(angle) * (archRadiusY + thickness / 2);
-            
-            const segment = world.createBody({
-                position: Vec2(x, y),
-                angle: angle + Math.PI / 2
-            });
-            segment.createFixture(planck.Box(1.5 / config.scale, thickness / 2), {
-                friction: 0.2,
-                restitution: 0.2
-            });
+            const x = centerX + Math.cos(angle) * archRadiusX;
+            const y = centerY + Math.sin(angle) * archRadiusY;
+            archVertices.push(Vec2(x, y));
         }
+        ground.createFixture(planck.Chain(archVertices), { friction: 0.2, restitution: 0.2 });
 
         // 2. Launch Rail
         const railX = (config.width - 35) / config.scale;
@@ -192,6 +185,12 @@
         activeBalls.push(ball);
 
         ball.applyLinearImpulse(Vec2(0, finalForceY), ball.getWorldCenter());
+        
+        // Log velocity after 1 frame to check for clamping
+        setTimeout(() => {
+            const vel = ball.getLinearVelocity();
+            console.log(`Velocity after launch: ${vel.y.toFixed(2)} m/s`);
+        }, 16);
     }
 
     function stopLight() {
@@ -293,29 +292,24 @@
                     ctx.closePath();
                 } else if (type === 'polygon') {
                     const idx = data ? data.index : -1;
-                    ctx.beginPath();
                     if (idx !== -1) {
                         const isActive = (isLightStopped ? activeGateIndex : lightIndex) === idx;
+                        ctx.beginPath();
                         ctx.fillStyle = isActive ? '#ccff00' : 'rgba(0, 255, 255, 0.1)';
                         if (isActive) {
                             ctx.shadowBlur = 15;
                             ctx.shadowColor = '#ccff00';
                         }
-                    } else {
-                        // This is a thick arch segment
-                        ctx.fillStyle = '#00ffff';
-                        ctx.shadowBlur = 5;
-                        ctx.shadowColor = '#00ffff';
-                    }
-                    const vertices = shape.m_vertices;
-                    if (vertices && vertices.length > 0) {
-                        ctx.moveTo(vertices[0].x * config.scale, vertices[0].y * config.scale);
-                        for (let i = 1; i < vertices.length; i++) {
-                            ctx.lineTo(vertices[i].x * config.scale, vertices[i].y * config.scale);
+                        const vertices = shape.m_vertices;
+                        if (vertices && vertices.length > 0) {
+                            ctx.moveTo(vertices[0].x * config.scale, vertices[0].y * config.scale);
+                            for (let i = 1; i < vertices.length; i++) {
+                                ctx.lineTo(vertices[i].x * config.scale, vertices[i].y * config.scale);
+                            }
+                            ctx.fill();
                         }
-                        ctx.fill();
+                        ctx.closePath();
                     }
-                    ctx.closePath();
                 }
                 ctx.restore();
             }
@@ -368,7 +362,7 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.4.3 initialized!");
+    console.log("Pachin Planck Edition v1.4.4 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
