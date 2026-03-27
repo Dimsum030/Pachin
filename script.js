@@ -1,4 +1,4 @@
-// Pachin v1.3.0 - Planck.js Stable Edition
+// Pachin v1.3.1 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -17,8 +17,8 @@
         initialBalls: 10,
         winReward: 5,
         maxChargeTime: 1500,
-        minForceY: -20,
-        maxForceY: -200, // Adjusted max force
+        minForceY: -40,
+        maxForceY: -400, // Adjusted max force
         numGates: 10,
         gateWidth: 40,
         scale: 10
@@ -85,7 +85,7 @@
         const pinAreaWidth = 440;
         const pinAreaHeight = 400;
         const pinAreaX = (config.width - pinAreaWidth) / 2 + 10;
-        const pinAreaY = 220;
+        const pinAreaY = 265;
         const pinSpacingX = 50;
         const pinSpacingY = 45;
         const rows = Math.floor(pinAreaHeight / pinSpacingY);
@@ -341,5 +341,5 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.3.0 initialized!");
+    console.log("Pachin Planck Edition v1.3.1 initialized!");
 })();
