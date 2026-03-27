@@ -1,4 +1,5 @@
-const { Engine, Render, Runner, Bodies, Composite, Events, Body, Vector, Vertices } = Matter;
+const planck = window.planck;
+const Vec2 = planck.Vec2;
 
 // Game Configuration
 const config = {
@@ -9,10 +10,11 @@ const config = {
     initialBalls: 10,
     winReward: 5,
     maxChargeTime: 1500,
-    minForceY: -0.005,
-    maxForceY: -0.018, // Reduced max force again
+    minForceY: -150, // Planck.js uses different force units
+    maxForceY: -450,
     numGates: 10,
-    gateWidth: 40
+    gateWidth: 40,
+    scale: 10 // Physics scale (10 pixels = 1 meter)
 };
 
 // State
@@ -27,29 +29,14 @@ let lightIndex = 0;
 let lightDirection = 1;
 let lastLightUpdate = 0;
 
-// Matter.js Setup
-const engine = Engine.create();
-engine.positionIterations = 10;
-engine.velocityIterations = 10;
-
-const world = engine.world;
+// Planck.js World Setup
+const world = planck.World(Vec2(0, 9.8)); // Gravity: 9.8 m/s^2
 const canvas = document.getElementById('pachinko-canvas');
+const ctx = canvas.getContext('2d');
 
-const render = Render.create({
-    canvas: canvas,
-    engine: engine,
-    options: {
-        width: config.width,
-        height: config.height,
-        wireframes: false,
-        background: 'transparent',
-        pixelRatio: window.devicePixelRatio || 1
-    }
-});
-
-Render.run(render);
-const runner = Runner.create();
-Runner.run(runner, engine);
+// Set canvas size
+canvas.width = config.width;
+canvas.height = config.height;
 
 // UI Elements
 const ballCountDisplay = document.getElementById('ball-count');
@@ -62,52 +49,35 @@ const chargeBar = document.getElementById('charge-bar');
 
 // Create Board
 function createBoard() {
-    // Thicker walls
-    const walls = [
-        Bodies.rectangle(-50, config.height / 2, 100, config.height + 200, { isStatic: true, render: { fillStyle: '#00ffff', opacity: 0.1 } }), // Left
-        Bodies.rectangle(config.width + 50, config.height / 2, 100, config.height + 200, { isStatic: true, render: { fillStyle: '#00ffff', opacity: 0.1 } }) // Right
-    ];
-    Composite.add(world, walls);
+    // 1. Walls (Static)
+    const ground = world.createBody();
+    // Left Wall
+    ground.createFixture(planck.Edge(Vec2(0, 0), Vec2(0, config.height / config.scale)), { friction: 0 });
+    // Right Wall
+    ground.createFixture(planck.Edge(Vec2(config.width / config.scale, 0), Vec2(config.width / config.scale, config.height / config.scale)), { friction: 0 });
 
-    // 1. Filled Top Arch (Blue Neon)
-    const archSegments = 150;
-    const archRadiusX = config.width / 2 + 5;
-    const archRadiusY = 220;
-    const centerX = config.width / 2;
-    const centerY = 240;
-    const thickness = 100; // Increased thickness to fill the top
-
+    // 2. Smooth Top Arch (Chain Shape - The key to smoothness)
+    const archSegments = 100;
+    const archRadiusX = (config.width / 2 + 10) / config.scale;
+    const archRadiusY = 220 / config.scale;
+    const centerX = (config.width / 2) / config.scale;
+    const centerY = 240 / config.scale;
+    
+    const archVertices = [];
     for (let i = 0; i <= archSegments; i++) {
         const angle = Math.PI + (i / archSegments) * Math.PI;
-        // Position the center of the segment so the INNER edge is at the radius
-        const x = centerX + Math.cos(angle) * (archRadiusX + thickness / 2);
-        const y = centerY + Math.sin(angle) * (archRadiusY + thickness / 2);
-        
-        const segment = Bodies.rectangle(x, y, 15, thickness, {
-            isStatic: true,
-            angle: angle + Math.PI / 2,
-            friction: 0,
-            restitution: 0.8,
-            render: { 
-                fillStyle: '#00ffff', 
-                strokeStyle: '#00ffff', 
-                lineWidth: 1,
-                opacity: 1.0 // Fully opaque to fill the top
-            }
-        });
-        Composite.add(world, segment);
+        const x = centerX + Math.cos(angle) * archRadiusX;
+        const y = centerY + Math.sin(angle) * archRadiusY;
+        archVertices.push(Vec2(x, y));
     }
+    // Create a Chain shape for the arch
+    ground.createFixture(planck.Chain(archVertices), { friction: 0, restitution: 0.8 });
 
-    // 2. Wider Launch Rail (Right side)
-    const railWidth = 10;
-    const railX = config.width - 35; // Moved left to make it wider
-    const rail = Bodies.rectangle(railX, config.height / 2 + 150, railWidth, config.height - 300, {
-        isStatic: true,
-        render: { fillStyle: '#00ffff', strokeStyle: '#00ffff', lineWidth: 2 }
-    });
-    Composite.add(world, rail);
+    // 3. Launch Rail (Right side)
+    const railX = (config.width - 35) / config.scale;
+    ground.createFixture(planck.Edge(Vec2(railX, (config.height - 150) / config.scale), Vec2(railX, 300 / config.scale)), { friction: 0 });
 
-    // 3. Expanded Pin Area
+    // 4. Pin Area (Square Grid)
     const pinAreaWidth = 420;
     const pinAreaHeight = 400;
     const pinAreaX = (config.width - pinAreaWidth) / 2 + 5;
@@ -122,62 +92,34 @@ function createBoard() {
             const x = pinAreaX + (c * pinSpacingX) + (r % 2 === 0 ? 0 : pinSpacingX / 2);
             const y = pinAreaY + (r * pinSpacingY);
             
-            // Ensure pins don't overlap with the wider rail
-            if (x < railX - 25) {
-                const pin = Bodies.circle(x, y, config.pinRadius, { 
-                    isStatic: true, 
-                    render: { fillStyle: '#00ff00', strokeStyle: '#00ff00', lineWidth: 1 } 
-                });
-                Composite.add(world, pin);
+            if (x < (config.width - 60)) {
+                const pin = world.createBody(Vec2(x / config.scale, y / config.scale));
+                pin.createFixture(planck.Circle(config.pinRadius / config.scale), { friction: 0.1, restitution: 0.5 });
             }
         }
     }
 
-    // 4. Bottom Gates
+    // 5. Bottom Gates
     const startX = (config.width - (config.numGates * config.gateWidth)) / 2 - 20;
     for (let i = 0; i < config.numGates; i++) {
         const x = startX + (i * config.gateWidth) + config.gateWidth / 2;
         
-        const divider = Bodies.rectangle(x - config.gateWidth / 2, config.height - 60, 2, 80, {
-            isStatic: true,
-            render: { fillStyle: '#00ffff' }
-        });
-        Composite.add(world, divider);
+        // Vertical Divider Line
+        ground.createFixture(planck.Edge(Vec2((x - config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x - config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
 
-        const gate = Bodies.rectangle(x, config.height - 40, config.gateWidth - 10, 20, {
-            isStatic: true,
-            isSensor: true,
-            label: `gate_${i}`,
-            render: { fillStyle: 'transparent' }
-        });
-        Composite.add(world, gate);
+        // Sensor Gate (Using UserData to identify)
+        const gate = world.createBody(Vec2(x / config.scale, (config.height - 40) / config.scale));
+        const fixture = gate.createFixture(planck.Box((config.gateWidth - 10) / (2 * config.scale), 10 / config.scale), { isSensor: true });
+        fixture.setUserData({ type: 'gate', index: i });
 
         if (i === config.numGates - 1) {
-            const lastDivider = Bodies.rectangle(x + config.gateWidth / 2, config.height - 60, 2, 80, {
-                isStatic: true,
-                render: { fillStyle: '#00ffff' }
-            });
-            Composite.add(world, lastDivider);
+            ground.createFixture(planck.Edge(Vec2((x + config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x + config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
         }
-    }
-}
-
-// Light Bouncing Logic
-function updateLight(time) {
-    if (isLightStopped) return;
-
-    if (time - lastLightUpdate > 100) {
-        lightIndex += lightDirection;
-        if (lightIndex >= config.numGates - 1 || lightIndex <= 0) {
-            lightDirection *= -1;
-        }
-        lastLightUpdate = time;
     }
 }
 
 // Shooting Logic
 function startCharging() {
-    // CRITICAL: Cannot shoot if a ball is already in play
     if (ballCount <= 0 || isGameOver || isCharging || !isLightStopped || activeBalls.length > 0) return;
     isCharging = true;
     chargeStartTime = Date.now();
@@ -208,22 +150,25 @@ function releaseAndShoot() {
     statusMsg.innerText = "BALL IN PLAY";
     updateUI();
 
-    // Spawn ball in the wider rail channel
-    const spawnX = config.width - 17;
-    const spawnY = config.height - 40;
+    const spawnX = (config.width - 17) / config.scale;
+    const spawnY = (config.height - 40) / config.scale;
 
-    const ball = Bodies.circle(spawnX, spawnY, config.ballRadius, {
-        restitution: 0.5,
-        friction: 0,
-        label: 'ball',
-        render: { fillStyle: '#ffffff', strokeStyle: '#00ffff', lineWidth: 2 }
+    const ball = world.createBody({
+        type: 'dynamic',
+        position: Vec2(spawnX, spawnY),
+        bullet: true // High-speed collision detection
     });
+    ball.createFixture(planck.Circle(config.ballRadius / config.scale), {
+        friction: 0,
+        restitution: 0.5,
+        density: 1.0
+    });
+    ball.setUserData({ type: 'ball' });
 
     activeBalls.push(ball);
-    Composite.add(world, ball);
 
     const forceY = config.minForceY + (config.maxForceY - config.minForceY) * chargeRatio;
-    Body.applyForce(ball, ball.position, { x: 0, y: forceY });
+    ball.applyLinearImpulse(Vec2(0, forceY), ball.getWorldCenter());
 }
 
 function stopLight() {
@@ -235,63 +180,123 @@ function stopLight() {
 }
 
 // Collision Handling
-Events.on(engine, 'collisionStart', (event) => {
-    event.pairs.forEach(pair => {
-        const { bodyA, bodyB } = pair;
-        const ball = bodyA.label === 'ball' ? bodyA : (bodyB.label === 'ball' ? bodyB : null);
-        const gate = bodyA.label.startsWith('gate_') ? bodyA : (bodyB.label.startsWith('gate_') ? bodyB : null);
-        
-        if (ball && gate) {
-            const gateIdx = parseInt(gate.label.split('_')[1]);
-            if (gateIdx === activeGateIndex) {
-                ballCount += config.winReward;
-            }
-            removeBall(ball);
-            updateUI();
-        }
-    });
-});
+world.on('begin-contact', (contact) => {
+    const fixtureA = contact.getFixtureA();
+    const fixtureB = contact.getFixtureB();
+    const dataA = fixtureA.getUserData();
+    const dataB = fixtureB.getUserData();
 
-function removeBall(ball) {
-    Composite.remove(world, ball);
-    activeBalls = activeBalls.filter(b => b !== ball);
-    
-    if (activeBalls.length === 0 && !isGameOver) {
-        isLightStopped = false;
-        shootBtn.disabled = true;
-        statusMsg.innerText = "STOP LIGHT";
+    const ball = (dataA && dataA.type === 'ball') ? fixtureA.getBody() : ((dataB && dataB.type === 'ball') ? fixtureB.getBody() : null);
+    const gateData = (dataA && dataA.type === 'gate') ? dataA : ((dataB && dataB.type === 'gate') ? dataB : null);
+
+    if (ball && gateData) {
+        if (gateData.index === activeGateIndex) {
+            ballCount += config.winReward;
+        }
+        // Mark ball for removal
+        ball.setUserData({ type: 'ball', remove: true });
     }
-}
+});
 
 function updateUI() {
     ballCountDisplay.innerText = ballCount;
 }
 
-// Game Loop Check
-Events.on(engine, 'afterUpdate', () => {
+// Rendering Loop
+function animate() {
+    world.step(1 / 60);
+    ctx.clearRect(0, 0, config.width, config.height);
+
+    // Update Light
     const time = Date.now();
-    updateLight(time);
+    if (!isLightStopped && time - lastLightUpdate > 100) {
+        lightIndex += lightDirection;
+        if (lightIndex >= config.numGates - 1 || lightIndex <= 0) lightDirection *= -1;
+        lastLightUpdate = time;
+    }
 
-    // Update gate visuals
-    const bodies = Composite.allBodies(world);
-    bodies.forEach(body => {
-        if (body.label.startsWith('gate_')) {
-            const idx = parseInt(body.label.split('_')[1]);
-            if (idx === (isLightStopped ? activeGateIndex : lightIndex)) {
-                body.render.fillStyle = '#ccff00';
-                body.render.opacity = 0.8;
-            } else {
-                body.render.fillStyle = 'transparent';
-                body.render.opacity = 0.1;
+    // Draw World
+    for (let body = world.getBodyList(); body; body = body.getNext()) {
+        const pos = body.getPosition();
+        const angle = body.getAngle();
+
+        for (let fixture = body.getFixtureList(); fixture; fixture = fixture.getNext()) {
+            const shape = fixture.getShape();
+            const type = shape.getType();
+            const data = fixture.getUserData();
+
+            ctx.save();
+            ctx.translate(pos.x * config.scale, pos.y * config.scale);
+            ctx.rotate(angle);
+
+            if (type === 'circle') {
+                const radius = shape.m_radius * config.scale;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                
+                if (body.getUserData() && body.getUserData().type === 'ball') {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#00ffff';
+                } else {
+                    ctx.fillStyle = '#00ff00';
+                }
+                ctx.fill();
+                ctx.closePath();
+            } else if (type === 'edge' || type === 'chain') {
+                ctx.beginPath();
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = '#00ffff';
+                
+                const vertices = type === 'edge' ? [shape.m_vertex1, shape.m_vertex2] : shape.m_vertices;
+                ctx.moveTo(vertices[0].x * config.scale - pos.x * config.scale, vertices[0].y * config.scale - pos.y * config.scale);
+                for (let i = 1; i < vertices.length; i++) {
+                    ctx.lineTo(vertices[i].x * config.scale - pos.x * config.scale, vertices[i].y * config.scale - pos.y * config.scale);
+                }
+                ctx.stroke();
+                ctx.closePath();
+            } else if (type === 'polygon') {
+                // Used for gates
+                const idx = data ? data.index : -1;
+                if (idx !== -1) {
+                    const isActive = (isLightStopped ? activeGateIndex : lightIndex) === idx;
+                    ctx.beginPath();
+                    ctx.fillStyle = isActive ? '#ccff00' : 'rgba(0, 255, 255, 0.1)';
+                    if (isActive) {
+                        ctx.shadowBlur = 15;
+                        ctx.shadowColor = '#ccff00';
+                    }
+                    const vertices = shape.m_vertices;
+                    ctx.moveTo(vertices[0].x * config.scale, vertices[0].y * config.scale);
+                    for (let i = 1; i < vertices.length; i++) {
+                        ctx.lineTo(vertices[i].x * config.scale, vertices[i].y * config.scale);
+                    }
+                    ctx.fill();
+                    ctx.closePath();
+                }
             }
+            ctx.restore();
         }
-    });
+    }
 
+    // Handle Ball Removal and Game Over
     for (let i = activeBalls.length - 1; i >= 0; i--) {
         const ball = activeBalls[i];
-        if (ball.position.y > config.height + 50) {
-            removeBall(ball);
+        const data = ball.getUserData();
+        const pos = ball.getPosition();
+
+        if (data.remove || pos.y * config.scale > config.height + 50) {
+            world.destroyBody(ball);
+            activeBalls.splice(i, 1);
             updateUI();
+
+            if (activeBalls.length === 0 && !isGameOver) {
+                isLightStopped = false;
+                shootBtn.disabled = true;
+                statusMsg.innerText = "STOP LIGHT";
+            }
         }
     }
 
@@ -299,17 +304,19 @@ Events.on(engine, 'afterUpdate', () => {
         isGameOver = true;
         gameOverOverlay.classList.add('visible');
     }
-});
+
+    requestAnimationFrame(animate);
+}
 
 // Event Listeners
 shootBtn.addEventListener('mousedown', startCharging);
 shootBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startCharging(); });
 window.addEventListener('mouseup', releaseAndShoot);
 window.addEventListener('touchend', releaseAndShoot);
-
 stopLightBtn.addEventListener('click', stopLight);
 
 // Initialize
 createBoard();
 updateUI();
-console.log("Pachin Cyber Edition v1.1.3 initialized!");
+animate();
+console.log("Pachin Planck Edition v1.2.0 initialized!");
