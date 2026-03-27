@@ -19,13 +19,10 @@ body {
 #game-wrapper {
     position: relative;
     width: 100%;
-    max-width: 500px;
     height: 100dvh;
-    border: 2px solid #00ffff;
     background-color: #000;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 0 20px #00ffff;
 }
 
 #ui-layer {
@@ -33,15 +30,14 @@ body {
     top: 0;
     left: 0;
     width: 100%;
-    padding: 15px 0; /* Removed X padding */
+    padding: 10px 0;
     display: flex;
-    justify-content: space-around; /* Balanced spacing */
+    justify-content: space-around;
     align-items: center;
     z-index: 100;
     pointer-events: none;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.7));
-    border-bottom: 1px solid rgba(0, 255, 255, 0.3);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6);
+    border-bottom: 1px solid rgba(0, 255, 255, 0.2);
 }
 
 #ball-counter {
@@ -86,6 +82,16 @@ body {
     transition: all 0.3s;
 }
 
+.led-red {
+    background: #ff0055;
+    box-shadow: 0 0 10px #ff0055, inset 0 0 4px rgba(0,0,0,0.5);
+}
+
+.led-green {
+    background: #ccff00;
+    box-shadow: 0 0 10px #ccff00, inset 0 0 4px rgba(0,0,0,0.5);
+}
+
 #canvas-container {
     flex: 1;
     position: relative;
@@ -104,7 +110,7 @@ body {
 #pachinko-canvas {
     max-width: 100%;
     max-height: 100%;
-    object-fit: contain; /* Maintain aspect ratio */
+    object-fit: contain;
     aspect-ratio: 500 / 800;
 }
 
@@ -172,7 +178,7 @@ body {
     align-items: center;
     padding: 20px;
     z-index: 100;
-    position: relative; /* Added for version tag positioning */
+    position: relative;
 }
 
 #version-tag {

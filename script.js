@@ -1,4 +1,4 @@
-// Pachin v1.6.0 - Planck.js Stable Edition
+// Pachin v1.6.1 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -19,17 +19,19 @@
     const config = {
         width: 500,
         height: 800,
-        ballRadius: 15, // 1.5x bigger (from 10)
-        pinRadius: 6.25, // 1.25x bigger (from 5)
+        ballRadius: 15,
+        pinRadius: 6.25,
         initialBalls: 10,
         winReward: 5,
         maxChargeTime: 1500,
         minForceY: -100,
         maxForceY: -580,
-        numGates: 7, // Reduced (from 10)
-        gateWidth: 65, // Wider (from 40)
+        numGates: 6, // Reduced further to make them wider and avoid tunnel
+        gateWidth: 70,
         scale: 10
     };
+
+    const tunnelWidth = 80; // 1.5x wider than before, comfortably fits radius 15 ball
 
     // State
     let ballCount = config.initialBalls;
@@ -69,12 +71,12 @@
         ground.createFixture(planck.Box(50 / config.scale, config.height / (2 * config.scale), Vec2((config.width + 50) / config.scale, config.height / (2 * config.scale))), { friction: 0 });
         ground.createFixture(planck.Box(config.width / (2 * config.scale), 50 / config.scale, Vec2(config.width / (2 * config.scale), -50 / config.scale)), { friction: 0 });
 
-        // 2. Smooth Top Arch
+        // 2. Smooth Top Arch - Positioned better
         const archSegments = 100;
         const archRadiusX = (config.width / 2 + 10) / config.scale;
         const archRadiusY = 220 / config.scale;
         const centerX = (config.width / 2) / config.scale;
-        const centerY = 320 / config.scale;
+        const centerY = 260 / config.scale; // Moved up to fill top space
         
         const archVertices = [];
         for (let i = 0; i <= archSegments; i++) {
@@ -85,18 +87,17 @@
         }
         ground.createFixture(planck.Chain(archVertices), { friction: 0.2, restitution: 0.2 });
 
-        // 3. Launch Rail - 1.5x wider tunnel (approx 52.5px width)
-        const tunnelWidth = 52.5;
+        // 3. Launch Rail
         const railX = (config.width - tunnelWidth) / config.scale;
-        ground.createFixture(planck.Edge(Vec2(railX, (config.height - 150) / config.scale), Vec2(railX, 380 / config.scale)), { friction: 0 });
+        ground.createFixture(planck.Edge(Vec2(railX, (config.height - 150) / config.scale), Vec2(railX, 320 / config.scale)), { friction: 0 });
 
-        // 4. Pin Area - Reduced density and rows
-        const pinAreaWidth = 400;
-        const pinAreaHeight = 300;
-        const pinAreaX = (config.width - pinAreaWidth) / 2;
-        const pinAreaY = 360;
-        const pinSpacingX = 75; // Increased (from 50)
-        const pinSpacingY = 70; // Increased (from 45)
+        // 4. Pin Area - Adjusted for wider tunnel
+        const pinAreaWidth = config.width - tunnelWidth - 40;
+        const pinAreaHeight = 350;
+        const pinAreaX = 20;
+        const pinAreaY = 300;
+        const pinSpacingX = 80;
+        const pinSpacingY = 75;
         const rows = Math.floor(pinAreaHeight / pinSpacingY);
         const cols = Math.floor(pinAreaWidth / pinSpacingX);
 
@@ -112,19 +113,23 @@
             }
         }
 
-        // 5. Bottom Gates
+        // 5. Bottom Gates - Positioned to avoid tunnel
         const totalGatesWidth = config.numGates * config.gateWidth;
-        const startX = (config.width - totalGatesWidth) / 2;
+        const startX = 10; // Start from left
         for (let i = 0; i < config.numGates; i++) {
             const x = startX + (i * config.gateWidth) + config.gateWidth / 2;
-            ground.createFixture(planck.Edge(Vec2((x - config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x - config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
+            
+            // Only create gate if it doesn't overlap with tunnel
+            if (x + config.gateWidth / 2 < (config.width - tunnelWidth)) {
+                ground.createFixture(planck.Edge(Vec2((x - config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x - config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
 
-            const gate = world.createBody(Vec2(x / config.scale, (config.height - 40) / config.scale));
-            const fixture = gate.createFixture(planck.Box((config.gateWidth - 10) / (2 * config.scale), 10 / config.scale), { isSensor: true });
-            fixture.setUserData({ type: 'gate', index: i });
+                const gate = world.createBody(Vec2(x / config.scale, (config.height - 40) / config.scale));
+                const fixture = gate.createFixture(planck.Box((config.gateWidth - 10) / (2 * config.scale), 10 / config.scale), { isSensor: true });
+                fixture.setUserData({ type: 'gate', index: i });
 
-            if (i === config.numGates - 1) {
-                ground.createFixture(planck.Edge(Vec2((x + config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x + config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
+                if (i === config.numGates - 1 || (startX + (i+1) * config.gateWidth + config.gateWidth/2 >= (config.width - tunnelWidth))) {
+                    ground.createFixture(planck.Edge(Vec2((x + config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x + config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
+                }
             }
         }
     }
@@ -157,7 +162,6 @@
         shootBtn.disabled = true;
         updateUI();
 
-        const tunnelWidth = 52.5;
         const spawnX = (config.width - tunnelWidth / 2) / config.scale;
         const spawnY = (config.height - 40) / config.scale;
 
@@ -198,8 +202,8 @@
         isLightStopped = true;
         activeGateIndex = lightIndex;
         shootBtn.disabled = false;
-        statusLed.style.background = '#ccff00';
-        statusLed.style.boxShadow = '0 0 10px #ccff00';
+        statusLed.classList.remove('led-red');
+        statusLed.classList.add('led-green');
     }
 
     // Collision Handling
@@ -320,7 +324,8 @@
             const isProtected = (now - data.spawnTime) < 500;
 
             if (!isProtected) {
-                if (pixelX > (config.width - 60) && pixelY > 780 && data.launched) {
+                // Ball Recovery: If ball falls back to the launch rail bottom
+                if (pixelX > (config.width - tunnelWidth) && pixelY > 780 && data.launched) {
                     ballCount++;
                     data.remove = true;
                 }
@@ -334,8 +339,8 @@
                 if (activeBalls.length === 0 && !isGameOver) {
                     isLightStopped = false;
                     shootBtn.disabled = true;
-                    statusLed.style.background = '#ff0055';
-                    statusLed.style.boxShadow = '0 0 10px #ff0055';
+                    statusLed.classList.remove('led-green');
+                    statusLed.classList.add('led-red');
                 }
             }
         }
@@ -356,5 +361,5 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.6.0 initialized!");
+    console.log("Pachin Planck Edition v1.6.1 initialized!");
 })();
