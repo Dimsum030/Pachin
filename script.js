@@ -18,7 +18,7 @@
         winReward: 5,
         maxChargeTime: 1500,
         minForceY: -20,
-        maxForceY: -120, // Adjusted max force
+        maxForceY: -200, // Adjusted max force
         numGates: 10,
         gateWidth: 40,
         scale: 10
@@ -165,8 +165,8 @@
             density: 1.0
         });
         
-        // Randomness in force: -5 to 5
-        const randomForce = (Math.random() * 10) - 5;
+        // Randomness in force: 0 to -5
+        const randomForce = Math.random() * -5;
         const baseForceY = config.minForceY + (config.maxForceY - config.minForceY) * chargeRatio;
         const finalForceY = baseForceY + randomForce;
 
@@ -298,8 +298,8 @@
             const pixelX = pos.x * config.scale;
             const pixelY = pos.y * config.scale;
 
-            // Ball Recovery: If ball falls back to the launch rail bottom
-            if (pixelX > 465 && pixelY > 750 && data.launched) {
+            // Ball Recovery: If ball falls back to the launch rail bottom (moved down)
+            if (pixelX > 465 && pixelY > 780 && data.launched) {
                 ballCount++;
                 data.remove = true;
                 console.log("Ball recovered!");
