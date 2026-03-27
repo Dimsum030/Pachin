@@ -1,4 +1,4 @@
-// Pachin v1.6.1 - Planck.js Stable Edition
+// Pachin v1.6.2 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -6,7 +6,6 @@
         return;
     }
 
-    // CRITICAL FIX: Increase the engine's speed limit to allow high-force shots
     if (planck.internal && planck.internal.Settings) {
         planck.internal.Settings.maxTranslation = 100.0;
     } else if (planck.Settings) {
@@ -15,7 +14,6 @@
 
     const Vec2 = planck.Vec2;
 
-    // Game Configuration
     const config = {
         width: 500,
         height: 800,
@@ -26,14 +24,13 @@
         maxChargeTime: 1500,
         minForceY: -100,
         maxForceY: -580,
-        numGates: 6, // Reduced further to make them wider and avoid tunnel
-        gateWidth: 70,
+        numGates: 6,
+        gateWidth: 60,
         scale: 10
     };
 
-    const tunnelWidth = 80; // 1.5x wider than before, comfortably fits radius 15 ball
+    const tunnelWidth = 80; // Wide tunnel for radius 15 ball
 
-    // State
     let ballCount = config.initialBalls;
     let activeBalls = [];
     let isGameOver = false;
@@ -45,7 +42,6 @@
     let lightDirection = 1;
     let lastLightUpdate = 0;
 
-    // Planck.js World Setup
     const world = planck.World(Vec2(0, 80.0));
     const canvas = document.getElementById('pachinko-canvas');
     const ctx = canvas.getContext('2d');
@@ -53,7 +49,6 @@
     canvas.width = config.width;
     canvas.height = config.height;
 
-    // UI Elements
     const ballCountDisplay = document.getElementById('ball-count');
     const statusLed = document.getElementById('status-led');
     const gameOverOverlay = document.getElementById('game-over-overlay');
@@ -62,7 +57,6 @@
     const chargeContainer = document.getElementById('charge-container');
     const chargeBar = document.getElementById('charge-bar');
 
-    // Create Board
     function createBoard() {
         const ground = world.createBody();
         
@@ -71,12 +65,12 @@
         ground.createFixture(planck.Box(50 / config.scale, config.height / (2 * config.scale), Vec2((config.width + 50) / config.scale, config.height / (2 * config.scale))), { friction: 0 });
         ground.createFixture(planck.Box(config.width / (2 * config.scale), 50 / config.scale, Vec2(config.width / (2 * config.scale), -50 / config.scale)), { friction: 0 });
 
-        // 2. Smooth Top Arch - Positioned better
+        // 2. Smooth Top Arch - MOVED DOWN SIGNIFICANTLY to avoid UI
         const archSegments = 100;
         const archRadiusX = (config.width / 2 + 10) / config.scale;
         const archRadiusY = 220 / config.scale;
         const centerX = (config.width / 2) / config.scale;
-        const centerY = 260 / config.scale; // Moved up to fill top space
+        const centerY = 350 / config.scale; // Moved down from 260
         
         const archVertices = [];
         for (let i = 0; i <= archSegments; i++) {
@@ -87,17 +81,17 @@
         }
         ground.createFixture(planck.Chain(archVertices), { friction: 0.2, restitution: 0.2 });
 
-        // 3. Launch Rail
+        // 3. Launch Rail - Double Line Tunnel
         const railX = (config.width - tunnelWidth) / config.scale;
-        ground.createFixture(planck.Edge(Vec2(railX, (config.height - 150) / config.scale), Vec2(railX, 320 / config.scale)), { friction: 0 });
+        ground.createFixture(planck.Edge(Vec2(railX, (config.height - 150) / config.scale), Vec2(railX, 400 / config.scale)), { friction: 0 });
 
-        // 4. Pin Area - Adjusted for wider tunnel
-        const pinAreaWidth = config.width - tunnelWidth - 40;
-        const pinAreaHeight = 350;
-        const pinAreaX = 20;
-        const pinAreaY = 300;
-        const pinSpacingX = 80;
-        const pinSpacingY = 75;
+        // 4. Pin Area
+        const pinAreaWidth = config.width - tunnelWidth - 60;
+        const pinAreaHeight = 300;
+        const pinAreaX = 30;
+        const pinAreaY = 380;
+        const pinSpacingX = 85;
+        const pinSpacingY = 80;
         const rows = Math.floor(pinAreaHeight / pinSpacingY);
         const cols = Math.floor(pinAreaWidth / pinSpacingX);
 
@@ -106,35 +100,34 @@
                 const x = pinAreaX + (c * pinSpacingX) + (r % 2 === 0 ? 0 : pinSpacingX / 2);
                 const y = pinAreaY + (r * pinSpacingY);
                 
-                if (x < (config.width - tunnelWidth - 20)) {
+                if (x < (config.width - tunnelWidth - 30)) {
                     const pin = world.createBody(Vec2(x / config.scale, y / config.scale));
                     pin.createFixture(planck.Circle(config.pinRadius / config.scale), { friction: 0.1, restitution: 0.5 });
                 }
             }
         }
 
-        // 5. Bottom Gates - Positioned to avoid tunnel
-        const totalGatesWidth = config.numGates * config.gateWidth;
-        const startX = 10; // Start from left
+        // 5. Bottom Gates - Positioned to avoid tunnel completely
+        const startX = 20;
         for (let i = 0; i < config.numGates; i++) {
             const x = startX + (i * config.gateWidth) + config.gateWidth / 2;
             
-            // Only create gate if it doesn't overlap with tunnel
-            if (x + config.gateWidth / 2 < (config.width - tunnelWidth)) {
+            // Ensure gate doesn't enter launch area (tunnelWidth is 80, so width-80 = 420)
+            if (x + config.gateWidth / 2 < (config.width - tunnelWidth - 10)) {
                 ground.createFixture(planck.Edge(Vec2((x - config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x - config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
 
                 const gate = world.createBody(Vec2(x / config.scale, (config.height - 40) / config.scale));
                 const fixture = gate.createFixture(planck.Box((config.gateWidth - 10) / (2 * config.scale), 10 / config.scale), { isSensor: true });
                 fixture.setUserData({ type: 'gate', index: i });
 
-                if (i === config.numGates - 1 || (startX + (i+1) * config.gateWidth + config.gateWidth/2 >= (config.width - tunnelWidth))) {
+                // Last wall for the last valid gate
+                if (i === config.numGates - 1 || (startX + (i+1) * config.gateWidth + config.gateWidth/2 >= (config.width - tunnelWidth - 10))) {
                     ground.createFixture(planck.Edge(Vec2((x + config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x + config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
                 }
             }
         }
     }
 
-    // Shooting Logic
     function startCharging() {
         if (ballCount <= 0 || isGameOver || isCharging || !isLightStopped || activeBalls.length > 0) return;
         isCharging = true;
@@ -183,16 +176,7 @@
         const randomForce = (Math.random() * -25) - 5;
         const finalForceY = Math.round(baseForceY + randomForce);
 
-        if (isNaN(finalForceY)) {
-            world.destroyBody(ball);
-            return;
-        }
-
-        ball.setUserData({ 
-            type: 'ball', 
-            launched: true,
-            spawnTime: Date.now() 
-        });
+        ball.setUserData({ type: 'ball', launched: true, spawnTime: Date.now() });
         activeBalls.push(ball);
         ball.setLinearVelocity(Vec2(0, finalForceY / 5));
     }
@@ -206,7 +190,6 @@
         statusLed.classList.add('led-green');
     }
 
-    // Collision Handling
     world.on('begin-contact', (contact) => {
         try {
             const fixtureA = contact.getFixtureA();
@@ -235,7 +218,6 @@
         ballCountDisplay.innerText = ballCount;
     }
 
-    // Rendering Loop
     function animate() {
         world.step(1 / 60);
         ctx.clearRect(0, 0, config.width, config.height);
@@ -267,18 +249,20 @@
                     const bodyData = body.getUserData();
                     if (bodyData && bodyData.type === 'ball') {
                         ctx.fillStyle = '#ffffff';
-                        ctx.shadowBlur = 10;
+                        ctx.shadowBlur = 15;
                         ctx.shadowColor = '#fff';
                     } else {
                         ctx.fillStyle = '#00ff00';
+                        ctx.shadowBlur = 5;
+                        ctx.shadowColor = '#00ff00';
                     }
                     ctx.fill();
                     ctx.closePath();
                 } else if (type === 'edge' || type === 'chain') {
                     ctx.beginPath();
                     ctx.strokeStyle = '#00ffff';
-                    ctx.lineWidth = 2;
-                    ctx.shadowBlur = 5;
+                    ctx.lineWidth = 3;
+                    ctx.shadowBlur = 8;
                     ctx.shadowColor = '#00ffff';
                     const vertices = type === 'edge' ? [shape.m_vertex1, shape.m_vertex2] : shape.m_vertices;
                     if (vertices && vertices.length > 0) {
@@ -294,9 +278,9 @@
                     if (idx !== -1) {
                         ctx.beginPath();
                         const isActive = (isLightStopped ? activeGateIndex : lightIndex) === idx;
-                        ctx.fillStyle = isActive ? '#ccff00' : 'rgba(0, 255, 255, 0.1)';
+                        ctx.fillStyle = isActive ? '#ccff00' : 'rgba(0, 255, 255, 0.05)';
                         if (isActive) {
-                            ctx.shadowBlur = 15;
+                            ctx.shadowBlur = 20;
                             ctx.shadowColor = '#ccff00';
                         }
                         const vertices = shape.m_vertices;
@@ -324,7 +308,6 @@
             const isProtected = (now - data.spawnTime) < 500;
 
             if (!isProtected) {
-                // Ball Recovery: If ball falls back to the launch rail bottom
                 if (pixelX > (config.width - tunnelWidth) && pixelY > 780 && data.launched) {
                     ballCount++;
                     data.remove = true;
@@ -361,5 +344,5 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.6.1 initialized!");
+    console.log("Pachin Planck Edition v1.6.2 initialized!");
 })();
