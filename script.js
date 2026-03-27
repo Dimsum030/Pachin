@@ -1,4 +1,4 @@
-// Pachin v1.3.6 - Planck.js Stable Edition
+// Pachin v1.3.7 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -159,6 +159,14 @@
             position: Vec2(spawnX, spawnY),
             bullet: true
         });
+        
+        // RESTORED: Create the ball's shape and physical properties
+        ball.createFixture(planck.Circle(config.ballRadius / config.scale), {
+            friction: 0.1,
+            restitution: 0.4,
+            density: 1.0
+        });
+
         // Exponential Curve for force: y = -1000 * (1 - e^(-0.00233 * x))
         const baseForceY = -1000 * (1 - Math.exp(-0.00233 * duration));
         
@@ -338,7 +346,7 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.3.6 initialized!");
+    console.log("Pachin Planck Edition v1.3.7 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Ball Radius:", config.ballRadius);
