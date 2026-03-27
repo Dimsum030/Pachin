@@ -1,4 +1,4 @@
-// Pachin v1.5.6 - Planck.js Stable Edition
+// Pachin v1.5.7 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -54,12 +54,12 @@
     // UI Elements
     const ballCountDisplay = document.getElementById('ball-count');
     const statusMsg = document.getElementById('status-msg');
+    const statusLed = document.getElementById('status-led');
     const gameOverOverlay = document.getElementById('game-over-overlay');
     const shootBtn = document.getElementById('shoot-btn');
     const stopLightBtn = document.getElementById('stop-light-btn');
     const chargeContainer = document.getElementById('charge-container');
     const chargeBar = document.getElementById('charge-bar');
-    const forceValueDisplay = document.getElementById('force-value');
 
     // Create Board
     function createBoard() {
@@ -145,12 +145,6 @@
         const duration = Math.min(Date.now() - chargeStartTime, config.maxChargeTime);
         const percent = (duration / config.maxChargeTime) * 100;
         chargeBar.style.width = `${percent}%`;
-        
-        // Use Math.abs to ensure positive magnitude for formula
-        const magnitude = Math.abs(config.maxForceY) * (1 - Math.exp(-0.00233 * duration));
-        const currentBaseForce = -magnitude; // Apply negative sign for "up"
-        forceValueDisplay.innerText = currentBaseForce.toFixed(2);
-        
         requestAnimationFrame(updateChargeBar);
     }
 
@@ -183,28 +177,19 @@
             density: 1.0
         });
 
-        // Use Math.abs to ensure positive magnitude for formula
         const magnitude = Math.abs(config.maxForceY) * (1 - Math.exp(-0.00233 * duration));
-        const baseForceY = -magnitude; // Apply negative sign for "up"
-        
-        // Randomness in force: -5 to -30
+        const baseForceY = -magnitude; 
         const randomForce = (Math.random() * -25) - 5;
-        
-        // Apply Math.round() to prevent floating point bugs
         const finalForceY = Math.round(baseForceY + randomForce);
 
-        // NaN Protection
         if (isNaN(finalForceY)) {
             console.error("CRITICAL ERROR: Force calculation resulted in NaN!");
-            forceValueDisplay.innerText = "ERROR: NaN";
             world.destroyBody(ball);
             return;
         }
 
-        forceValueDisplay.innerText = finalForceY.toFixed(2);
         console.log(`Shoot: duration=${duration}ms, baseForce=${baseForceY.toFixed(2)}, finalForce=${finalForceY.toFixed(2)}`);
 
-        // Added spawnTime for launch protection
         ball.setUserData({ 
             type: 'ball', 
             launched: true,
@@ -212,7 +197,6 @@
         });
         activeBalls.push(ball);
 
-        // Use setLinearVelocity with a smaller divisor (5) for more power
         ball.setLinearVelocity(Vec2(0, finalForceY / 5));
     }
 
@@ -222,6 +206,10 @@
         activeGateIndex = lightIndex;
         shootBtn.disabled = false;
         statusMsg.innerText = "READY";
+        
+        // Update LED
+        statusLed.classList.remove('led-red');
+        statusLed.classList.add('led-green');
     }
 
     // Collision Handling
@@ -347,18 +335,15 @@
             const pixelY = pos.y * config.scale;
             const now = Date.now();
 
-            // Launch Protection: Ignore cleanup for the first 500ms
             const isProtected = (now - data.spawnTime) < 500;
 
             if (!isProtected) {
-                // Ball Recovery
                 if (pixelX > 465 && pixelY > 780 && data.launched) {
                     ballCount++;
                     data.remove = true;
                     console.log("Ball recovered!");
                 }
 
-                // Relaxed Escape Limit: -2000px to prevent jitter-induced deletion
                 if (pixelY < -2000) {
                     data.remove = true;
                     console.log("Ball escaped top! Auto-cleaning...");
@@ -374,6 +359,10 @@
                     isLightStopped = false;
                     shootBtn.disabled = true;
                     statusMsg.innerText = "STOP LIGHT";
+                    
+                    // Reset LED
+                    statusLed.classList.remove('led-green');
+                    statusLed.classList.add('led-red');
                 }
             }
         }
@@ -398,7 +387,7 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.5.6 initialized!");
+    console.log("Pachin Planck Edition v1.5.7 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
