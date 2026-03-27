@@ -1,4 +1,4 @@
-// Pachin v1.5.1 - Planck.js Stable Edition
+// Pachin v1.5.2 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -146,7 +146,9 @@
         const percent = (duration / config.maxChargeTime) * 100;
         chargeBar.style.width = `${percent}%`;
         
-        const currentBaseForce = config.maxForceY * (1 - Math.exp(-0.00233 * duration));
+        // Use Math.abs to ensure positive magnitude for formula
+        const magnitude = Math.abs(config.maxForceY) * (1 - Math.exp(-0.00233 * duration));
+        const currentBaseForce = -magnitude; // Apply negative sign for "up"
         forceValueDisplay.innerText = currentBaseForce.toFixed(2);
         
         requestAnimationFrame(updateChargeBar);
@@ -181,9 +183,21 @@
             density: 1.0
         });
 
-        const baseForceY = config.maxForceY * (1 - Math.exp(-0.00233 * duration));
+        // Use Math.abs to ensure positive magnitude for formula
+        const magnitude = Math.abs(config.maxForceY) * (1 - Math.exp(-0.00233 * duration));
+        const baseForceY = -magnitude; // Apply negative sign for "up"
+        
+        // Randomness in force: -5 to -30
         const randomForce = (Math.random() * -25) - 5;
         const finalForceY = baseForceY + randomForce;
+
+        // NaN Protection
+        if (isNaN(finalForceY)) {
+            console.error("CRITICAL ERROR: Force calculation resulted in NaN!");
+            forceValueDisplay.innerText = "ERROR: NaN";
+            world.destroyBody(ball);
+            return;
+        }
 
         forceValueDisplay.innerText = finalForceY.toFixed(2);
         console.log(`Shoot: duration=${duration}ms, baseForce=${baseForceY.toFixed(2)}, finalForce=${finalForceY.toFixed(2)}`);
@@ -191,7 +205,7 @@
         ball.setUserData({ type: 'ball', launched: true });
         activeBalls.push(ball);
 
-        // FIXED: Use setLinearVelocity with a smaller divisor (5) for more power
+        // Use setLinearVelocity with a smaller divisor (5) for more power
         ball.setLinearVelocity(Vec2(0, finalForceY / 5));
     }
 
@@ -369,10 +383,10 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.5.1 initialized!");
+    console.log("Pachin Planck Edition v1.5.2 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
-    console.log("Force Formula: y = maxForceY * (1 - e^(-0.00233 * x))");
+    console.log("Force Formula: y = " + config.maxForceY + " * (1 - e^(-0.00233 * x))");
     console.log("-----------------------------");
 })();
