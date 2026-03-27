@@ -1,4 +1,4 @@
-// Pachin v1.4.0 - Planck.js Stable Edition
+// Pachin v1.4.1 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -8,8 +8,11 @@
 
     // CRITICAL FIX: Increase the engine's speed limit to allow high-force shots
     // Default maxTranslation is 2.0, which caps speed at 120m/s (1200px/s at scale 10)
-    if (planck.Settings) {
-        planck.Settings.maxTranslation = 20.0; // Allow up to 1200m/s
+    // In v0.3.3, Settings are under planck.internal.Settings
+    if (planck.internal && planck.internal.Settings) {
+        planck.internal.Settings.maxTranslation = 100.0; // Allow up to 6000m/s
+    } else if (planck.Settings) {
+        planck.Settings.maxTranslation = 100.0;
     }
 
     const Vec2 = planck.Vec2;
@@ -171,8 +174,8 @@
             density: 1.0
         });
 
-        // Exponential Curve for force: y = maxForceY * (1 - e^(-0.00233 * x))
-        const baseForceY = config.maxForceY * (1 - Math.exp(-0.00233 * duration));
+        // Exponential Curve for force: y = -2000 * (1 - e^(-0.00233 * x))
+        const baseForceY = -2000 * (1 - Math.exp(-0.00233 * duration));
         
         // Randomness in force: -50 to -150
         const randomForce = (Math.random() * -100) - 50;
@@ -184,6 +187,12 @@
         activeBalls.push(ball);
 
         ball.applyLinearImpulse(Vec2(0, finalForceY), ball.getWorldCenter());
+        
+        // Log velocity after 1 frame to check for clamping
+        setTimeout(() => {
+            const vel = ball.getLinearVelocity();
+            console.log(`Velocity after launch: ${vel.y.toFixed(2)} m/s`);
+        }, 16);
     }
 
     function stopLight() {
@@ -196,25 +205,28 @@
 
     // Collision Handling
     world.on('begin-contact', (contact) => {
-        const fixtureA = contact.getFixtureA();
-        const fixtureB = contact.getFixtureB();
-        const bodyA = fixtureA.getBody();
-        const bodyB = fixtureB.getBody();
-        const bodyDataA = bodyA.getUserData();
-        const bodyDataB = bodyB.getUserData();
-        const fixDataA = fixtureA.getUserData();
-        const fixDataB = fixtureB.getUserData();
+        try {
+            const fixtureA = contact.getFixtureA();
+            const fixtureB = contact.getFixtureB();
+            const bodyA = fixtureA.getBody();
+            const bodyB = fixtureB.getBody();
+            const bodyDataA = bodyA.getUserData();
+            const bodyDataB = bodyB.getUserData();
+            const fixDataA = fixtureA.getUserData();
+            const fixDataB = fixtureB.getUserData();
 
-        const ballBody = (bodyDataA && bodyDataA.type === 'ball') ? bodyA : ((bodyDataB && bodyDataB.type === 'ball') ? bodyB : null);
-        const gateData = (fixDataA && fixDataA.type === 'gate') ? fixDataA : ((fixDataB && fixDataB.type === 'gate') ? fixDataB : null);
+            const ballBody = (bodyDataA && bodyDataA.type === 'ball') ? bodyA : ((bodyDataB && bodyDataB.type === 'ball') ? bodyB : null);
+            const gateData = (fixDataA && fixDataA.type === 'gate') ? fixDataA : ((fixDataB && fixDataB.type === 'gate') ? fixDataB : null);
 
-        // FIXED: Corrected variable reference to avoid crash
-        if (ballBody && gateData) {
-            if (gateData.index === activeGateIndex) {
-                ballCount += config.winReward;
-                updateUI();
+            if (ballBody && gateData) {
+                if (gateData.index === activeGateIndex) {
+                    ballCount += config.winReward;
+                    updateUI();
+                }
+                ballBody.setUserData({ type: 'ball', remove: true });
             }
-            ballBody.setUserData({ type: 'ball', remove: true });
+        } catch (e) {
+            console.error("Collision Error:", e);
         }
     });
 
@@ -352,10 +364,10 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.4.0 initialized!");
+    console.log("Pachin Planck Edition v1.4.1 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
-    console.log("Force Formula: y = maxForceY * (1 - e^(-0.00233 * x))");
+    console.log("Force Formula: y = -2000 * (1 - e^(-0.00233 * x))");
     console.log("-----------------------------");
 })();
