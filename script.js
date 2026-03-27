@@ -1,4 +1,4 @@
-// Pachin v1.4.2 - Planck.js Stable Edition
+// Pachin v1.4.3 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -7,10 +7,8 @@
     }
 
     // CRITICAL FIX: Increase the engine's speed limit to allow high-force shots
-    // Default maxTranslation is 2.0, which caps speed at 120m/s (1200px/s at scale 10)
-    // In v0.3.3, Settings are under planck.internal.Settings
     if (planck.internal && planck.internal.Settings) {
-        planck.internal.Settings.maxTranslation = 100.0; // Allow up to 6000m/s
+        planck.internal.Settings.maxTranslation = 100.0;
     } else if (planck.Settings) {
         planck.Settings.maxTranslation = 100.0;
     }
@@ -70,27 +68,34 @@
         ground.createFixture(planck.Edge(Vec2(0, 0), Vec2(0, config.height / config.scale)), { friction: 0 });
         ground.createFixture(planck.Edge(Vec2(config.width / config.scale, 0), Vec2(config.width / config.scale, config.height / config.scale)), { friction: 0 });
 
-        // Smooth Top Arch (Chain Shape)
+        // 1. THICK Top Arch (Using multiple Boxes to prevent tunneling)
         const archSegments = 100;
         const archRadiusX = (config.width / 2 + 10) / config.scale;
         const archRadiusY = 220 / config.scale;
         const centerX = (config.width / 2) / config.scale;
         const centerY = 240 / config.scale;
-        
-        const archVertices = [];
+        const thickness = 20 / config.scale; // 20px thickness
+
         for (let i = 0; i <= archSegments; i++) {
             const angle = Math.PI + (i / archSegments) * Math.PI;
-            const x = centerX + Math.cos(angle) * archRadiusX;
-            const y = centerY + Math.sin(angle) * archRadiusY;
-            archVertices.push(Vec2(x, y));
+            const x = centerX + Math.cos(angle) * (archRadiusX + thickness / 2);
+            const y = centerY + Math.sin(angle) * (archRadiusY + thickness / 2);
+            
+            const segment = world.createBody({
+                position: Vec2(x, y),
+                angle: angle + Math.PI / 2
+            });
+            segment.createFixture(planck.Box(1.5 / config.scale, thickness / 2), {
+                friction: 0.2,
+                restitution: 0.2
+            });
         }
-        ground.createFixture(planck.Chain(archVertices), { friction: 0.2, restitution: 0.2 });
 
-        // Launch Rail
+        // 2. Launch Rail
         const railX = (config.width - 35) / config.scale;
         ground.createFixture(planck.Edge(Vec2(railX, (config.height - 150) / config.scale), Vec2(railX, 300 / config.scale)), { friction: 0 });
 
-        // Pin Area - Adjusted density for larger pins
+        // 3. Pin Area
         const pinAreaWidth = 440;
         const pinAreaHeight = 400;
         const pinAreaX = (config.width - pinAreaWidth) / 2 + 10;
@@ -112,7 +117,7 @@
             }
         }
 
-        // Bottom Gates
+        // 4. Bottom Gates
         const startX = (config.width - (config.numGates * config.gateWidth)) / 2 - 20;
         for (let i = 0; i < config.numGates; i++) {
             const x = startX + (i * config.gateWidth) + config.gateWidth / 2;
@@ -175,7 +180,7 @@
         });
 
         // Exponential Curve for force: y = -777 * (1 - e^(-0.00233 * x))
-        const baseForceY = -777 * (1 - Math.exp(-0.00233 * duration));
+        const baseForceY = config.maxForceY * (1 - Math.exp(-0.00233 * duration));
         
         // Randomness in force: -50 to -150
         const randomForce = (Math.random() * -100) - 50;
@@ -187,12 +192,6 @@
         activeBalls.push(ball);
 
         ball.applyLinearImpulse(Vec2(0, finalForceY), ball.getWorldCenter());
-        
-        // Log velocity after 1 frame to check for clamping
-        setTimeout(() => {
-            const vel = ball.getLinearVelocity();
-            console.log(`Velocity after launch: ${vel.y.toFixed(2)} m/s`);
-        }, 16);
     }
 
     function stopLight() {
@@ -294,24 +293,29 @@
                     ctx.closePath();
                 } else if (type === 'polygon') {
                     const idx = data ? data.index : -1;
+                    ctx.beginPath();
                     if (idx !== -1) {
                         const isActive = (isLightStopped ? activeGateIndex : lightIndex) === idx;
-                        ctx.beginPath();
                         ctx.fillStyle = isActive ? '#ccff00' : 'rgba(0, 255, 255, 0.1)';
                         if (isActive) {
                             ctx.shadowBlur = 15;
                             ctx.shadowColor = '#ccff00';
                         }
-                        const vertices = shape.m_vertices;
-                        if (vertices && vertices.length > 0) {
-                            ctx.moveTo(vertices[0].x * config.scale, vertices[0].y * config.scale);
-                            for (let i = 1; i < vertices.length; i++) {
-                                ctx.lineTo(vertices[i].x * config.scale, vertices[i].y * config.scale);
-                            }
-                            ctx.fill();
-                        }
-                        ctx.closePath();
+                    } else {
+                        // This is a thick arch segment
+                        ctx.fillStyle = '#00ffff';
+                        ctx.shadowBlur = 5;
+                        ctx.shadowColor = '#00ffff';
                     }
+                    const vertices = shape.m_vertices;
+                    if (vertices && vertices.length > 0) {
+                        ctx.moveTo(vertices[0].x * config.scale, vertices[0].y * config.scale);
+                        for (let i = 1; i < vertices.length; i++) {
+                            ctx.lineTo(vertices[i].x * config.scale, vertices[i].y * config.scale);
+                        }
+                        ctx.fill();
+                    }
+                    ctx.closePath();
                 }
                 ctx.restore();
             }
@@ -364,7 +368,7 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.4.2 initialized!");
+    console.log("Pachin Planck Edition v1.4.3 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
