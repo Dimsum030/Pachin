@@ -1,4 +1,4 @@
-// Pachin v1.5.8 - Planck.js Stable Edition
+// Pachin v1.5.9 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -24,8 +24,8 @@
         initialBalls: 10,
         winReward: 5,
         maxChargeTime: 1500,
-        minForceY: -40,
-        maxForceY: -600, // Current max force
+        minForceY: -100, // New Min Force
+        maxForceY: -580, // New Max Force
         numGates: 10,
         gateWidth: 40,
         scale: 10
@@ -177,8 +177,11 @@
             density: 1.0
         });
 
-        const magnitude = Math.abs(config.maxForceY) * (1 - Math.exp(-0.00233 * duration));
-        const baseForceY = -magnitude; 
+        // NEW FORMULA: y = MinForce + (MaxForce - MinForce) * (1 - e^(-0.00233 * x))
+        const minF = config.minForceY;
+        const maxF = config.maxForceY;
+        const baseForceY = minF + (maxF - minF) * (1 - Math.exp(-0.00233 * duration));
+        
         const randomForce = (Math.random() * -25) - 5;
         const finalForceY = Math.round(baseForceY + randomForce);
 
@@ -385,10 +388,11 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.5.8 initialized!");
+    console.log("Pachin Planck Edition v1.5.9 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
+    console.log("Min Force Y:", config.minForceY);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
-    console.log("Force Formula: y = " + config.maxForceY + " * (1 - e^(-0.00233 * x))");
+    console.log("Force Formula: y = MinF + (MaxF - MinF) * (1 - e^(-0.00233 * x))");
     console.log("-----------------------------");
 })();
