@@ -1,4 +1,7 @@
 const planck = window.planck;
+if (!planck) {
+    console.error("Planck.js failed to load!");
+}
 const Vec2 = planck.Vec2;
 
 // Game Configuration
@@ -10,11 +13,11 @@ const config = {
     initialBalls: 10,
     winReward: 5,
     maxChargeTime: 1500,
-    minForceY: -150, // Planck.js uses different force units
+    minForceY: -150,
     maxForceY: -450,
     numGates: 10,
     gateWidth: 40,
-    scale: 10 // Physics scale (10 pixels = 1 meter)
+    scale: 10
 };
 
 // State
@@ -30,7 +33,7 @@ let lightDirection = 1;
 let lastLightUpdate = 0;
 
 // Planck.js World Setup
-const world = planck.World(Vec2(0, 9.8)); // Gravity: 9.8 m/s^2
+const world = new planck.World(Vec2(0, 9.8)); // CRITICAL FIX: Added 'new'
 const canvas = document.getElementById('pachinko-canvas');
 const ctx = canvas.getContext('2d');
 
@@ -49,14 +52,15 @@ const chargeBar = document.getElementById('charge-bar');
 
 // Create Board
 function createBoard() {
-    // 1. Walls (Static)
+    console.log("Creating board...");
     const ground = world.createBody();
+    
     // Left Wall
     ground.createFixture(planck.Edge(Vec2(0, 0), Vec2(0, config.height / config.scale)), { friction: 0 });
     // Right Wall
     ground.createFixture(planck.Edge(Vec2(config.width / config.scale, 0), Vec2(config.width / config.scale, config.height / config.scale)), { friction: 0 });
 
-    // 2. Smooth Top Arch (Chain Shape - The key to smoothness)
+    // 2. Smooth Top Arch (Chain Shape)
     const archSegments = 100;
     const archRadiusX = (config.width / 2 + 10) / config.scale;
     const archRadiusY = 220 / config.scale;
@@ -70,14 +74,13 @@ function createBoard() {
         const y = centerY + Math.sin(angle) * archRadiusY;
         archVertices.push(Vec2(x, y));
     }
-    // Create a Chain shape for the arch
     ground.createFixture(planck.Chain(archVertices), { friction: 0, restitution: 0.8 });
 
     // 3. Launch Rail (Right side)
     const railX = (config.width - 35) / config.scale;
     ground.createFixture(planck.Edge(Vec2(railX, (config.height - 150) / config.scale), Vec2(railX, 300 / config.scale)), { friction: 0 });
 
-    // 4. Pin Area (Square Grid)
+    // 4. Pin Area
     const pinAreaWidth = 420;
     const pinAreaHeight = 400;
     const pinAreaX = (config.width - pinAreaWidth) / 2 + 5;
@@ -104,10 +107,8 @@ function createBoard() {
     for (let i = 0; i < config.numGates; i++) {
         const x = startX + (i * config.gateWidth) + config.gateWidth / 2;
         
-        // Vertical Divider Line
         ground.createFixture(planck.Edge(Vec2((x - config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x - config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
 
-        // Sensor Gate (Using UserData to identify)
         const gate = world.createBody(Vec2(x / config.scale, (config.height - 40) / config.scale));
         const fixture = gate.createFixture(planck.Box((config.gateWidth - 10) / (2 * config.scale), 10 / config.scale), { isSensor: true });
         fixture.setUserData({ type: 'gate', index: i });
@@ -116,6 +117,7 @@ function createBoard() {
             ground.createFixture(planck.Edge(Vec2((x + config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x + config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
         }
     }
+    console.log("Board created.");
 }
 
 // Shooting Logic
@@ -156,7 +158,7 @@ function releaseAndShoot() {
     const ball = world.createBody({
         type: 'dynamic',
         position: Vec2(spawnX, spawnY),
-        bullet: true // High-speed collision detection
+        bullet: true
     });
     ball.createFixture(planck.Circle(config.ballRadius / config.scale), {
         friction: 0,
@@ -193,7 +195,6 @@ world.on('begin-contact', (contact) => {
         if (gateData.index === activeGateIndex) {
             ballCount += config.winReward;
         }
-        // Mark ball for removal
         ball.setUserData({ type: 'ball', remove: true });
     }
 });
@@ -234,7 +235,8 @@ function animate() {
                 ctx.beginPath();
                 ctx.arc(0, 0, radius, 0, Math.PI * 2);
                 
-                if (body.getUserData() && body.getUserData().type === 'ball') {
+                const bodyData = body.getUserData();
+                if (bodyData && bodyData.type === 'ball') {
                     ctx.fillStyle = '#ffffff';
                     ctx.shadowBlur = 10;
                     ctx.shadowColor = '#00ffff';
@@ -251,14 +253,15 @@ function animate() {
                 ctx.shadowColor = '#00ffff';
                 
                 const vertices = type === 'edge' ? [shape.m_vertex1, shape.m_vertex2] : shape.m_vertices;
-                ctx.moveTo(vertices[0].x * config.scale - pos.x * config.scale, vertices[0].y * config.scale - pos.y * config.scale);
-                for (let i = 1; i < vertices.length; i++) {
-                    ctx.lineTo(vertices[i].x * config.scale - pos.x * config.scale, vertices[i].y * config.scale - pos.y * config.scale);
+                if (vertices && vertices.length > 0) {
+                    ctx.moveTo(vertices[0].x * config.scale - pos.x * config.scale, vertices[0].y * config.scale - pos.y * config.scale);
+                    for (let i = 1; i < vertices.length; i++) {
+                        ctx.lineTo(vertices[i].x * config.scale - pos.x * config.scale, vertices[i].y * config.scale - pos.y * config.scale);
+                    }
+                    ctx.stroke();
                 }
-                ctx.stroke();
                 ctx.closePath();
             } else if (type === 'polygon') {
-                // Used for gates
                 const idx = data ? data.index : -1;
                 if (idx !== -1) {
                     const isActive = (isLightStopped ? activeGateIndex : lightIndex) === idx;
@@ -269,11 +272,13 @@ function animate() {
                         ctx.shadowColor = '#ccff00';
                     }
                     const vertices = shape.m_vertices;
-                    ctx.moveTo(vertices[0].x * config.scale, vertices[0].y * config.scale);
-                    for (let i = 1; i < vertices.length; i++) {
-                        ctx.lineTo(vertices[i].x * config.scale, vertices[i].y * config.scale);
+                    if (vertices && vertices.length > 0) {
+                        ctx.moveTo(vertices[0].x * config.scale, vertices[0].y * config.scale);
+                        for (let i = 1; i < vertices.length; i++) {
+                            ctx.lineTo(vertices[i].x * config.scale, vertices[i].y * config.scale);
+                        }
+                        ctx.fill();
                     }
-                    ctx.fill();
                     ctx.closePath();
                 }
             }
@@ -281,7 +286,7 @@ function animate() {
         }
     }
 
-    // Handle Ball Removal and Game Over
+    // Handle Ball Removal
     for (let i = activeBalls.length - 1; i >= 0; i--) {
         const ball = activeBalls[i];
         const data = ball.getUserData();
@@ -319,4 +324,4 @@ stopLightBtn.addEventListener('click', stopLight);
 createBoard();
 updateUI();
 animate();
-console.log("Pachin Planck Edition v1.2.0 initialized!");
+console.log("Pachin Planck Edition v1.2.1 initialized!");
