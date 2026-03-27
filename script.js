@@ -1,4 +1,4 @@
-// Pachin v1.5.7 - Planck.js Stable Edition
+// Pachin v1.5.8 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -25,7 +25,7 @@
         winReward: 5,
         maxChargeTime: 1500,
         minForceY: -40,
-        maxForceY: -600, // Adjusted max force
+        maxForceY: -600, // Current max force
         numGates: 10,
         gateWidth: 40,
         scale: 10
@@ -73,12 +73,12 @@
         // Safety Ceiling
         ground.createFixture(planck.Box(config.width / (2 * config.scale), 50 / config.scale, Vec2(config.width / (2 * config.scale), -50 / config.scale)), { friction: 0 });
 
-        // 2. Smooth Top Arch (Chain Shape)
+        // 2. Smooth Top Arch (Chain Shape) - MOVED DOWN to avoid UI Panel
         const archSegments = 100;
         const archRadiusX = (config.width / 2 + 10) / config.scale;
         const archRadiusY = 220 / config.scale;
         const centerX = (config.width / 2) / config.scale;
-        const centerY = 240 / config.scale;
+        const centerY = 320 / config.scale; // Moved down from 240
         
         const archVertices = [];
         for (let i = 0; i <= archSegments; i++) {
@@ -91,13 +91,13 @@
 
         // 3. Launch Rail
         const railX = (config.width - 35) / config.scale;
-        ground.createFixture(planck.Edge(Vec2(railX, (config.height - 150) / config.scale), Vec2(railX, 300 / config.scale)), { friction: 0 });
+        ground.createFixture(planck.Edge(Vec2(railX, (config.height - 150) / config.scale), Vec2(railX, 380 / config.scale)), { friction: 0 });
 
-        // 4. Pin Area
+        // 4. Pin Area - MOVED DOWN to match arch
         const pinAreaWidth = 440;
-        const pinAreaHeight = 400;
+        const pinAreaHeight = 350;
         const pinAreaX = (config.width - pinAreaWidth) / 2 + 10;
-        const pinAreaY = 265;
+        const pinAreaY = 345; // Moved down from 265
         const pinSpacingX = 50;
         const pinSpacingY = 45;
         const rows = Math.floor(pinAreaHeight / pinSpacingY);
@@ -207,7 +207,6 @@
         shootBtn.disabled = false;
         statusMsg.innerText = "READY";
         
-        // Update LED
         statusLed.classList.remove('led-red');
         statusLed.classList.add('led-green');
     }
@@ -360,7 +359,6 @@
                     shootBtn.disabled = true;
                     statusMsg.innerText = "STOP LIGHT";
                     
-                    // Reset LED
                     statusLed.classList.remove('led-green');
                     statusLed.classList.add('led-red');
                 }
@@ -387,7 +385,7 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.5.7 initialized!");
+    console.log("Pachin Planck Edition v1.5.8 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
