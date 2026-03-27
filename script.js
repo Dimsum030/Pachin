@@ -29,9 +29,9 @@
         return false;
     };
 
-    const planck = window.planck;
+    const planck = window.planck || (typeof planck !== 'undefined' ? planck : null);
     if (!planck) {
-        showError("Planck.js failed to load from CDN.");
+        showError("Planck.js failed to load from CDN. (window.planck is undefined)");
         return;
     }
 
