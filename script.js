@@ -1,46 +1,12 @@
-// Pachin v1.2.3 - Planck.js Debug Edition
+// Pachin v1.2.7 - Planck.js Stable Edition
 (function() {
-    // Error Display Overlay
-    const errorOverlay = document.createElement('div');
-    errorOverlay.style.position = 'absolute';
-    errorOverlay.style.top = '0';
-    errorOverlay.style.left = '0';
-    errorOverlay.style.width = '100%';
-    errorOverlay.style.height = '100%';
-    errorOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
-    errorOverlay.style.color = '#ff0000';
-    errorOverlay.style.padding = '20px';
-    errorOverlay.style.fontFamily = 'monospace';
-    errorOverlay.style.fontSize = '12px';
-    errorOverlay.style.zIndex = '9999';
-    errorOverlay.style.display = 'none';
-    errorOverlay.style.pointerEvents = 'none';
-    errorOverlay.style.overflowY = 'auto';
-    document.body.appendChild(errorOverlay);
-
-    function showError(msg) {
-        errorOverlay.style.display = 'block';
-        errorOverlay.innerHTML += `<div>[ERROR] ${msg}</div>`;
-        console.error(msg);
-    }
-
-    window.onerror = function(message, source, lineno, colno, error) {
-        showError(`${message} at ${source}:${lineno}:${colno}`);
-        return false;
-    };
-
-    const planck = window.planck || (typeof planck !== 'undefined' ? planck : null);
+    const planck = window.planck;
     if (!planck) {
-        showError("Planck.js failed to load from CDN. (window.planck is undefined)");
+        alert("CRITICAL ERROR: Planck.js failed to load from CDN.");
         return;
     }
 
-    // In v0.3.3, Vec2 is often planck.Vec2
     const Vec2 = planck.Vec2;
-    if (!Vec2) {
-        showError("planck.Vec2 is undefined. Check Planck.js version.");
-        return;
-    }
 
     // Game Configuration
     const config = {
@@ -52,7 +18,7 @@
         winReward: 5,
         maxChargeTime: 1500,
         minForceY: -20,
-        maxForceY: -450,
+        maxForceY: -120, // Adjusted max force
         numGates: 10,
         gateWidth: 40,
         scale: 10
@@ -71,14 +37,7 @@
     let lastLightUpdate = 0;
 
     // Planck.js World Setup
-    let world;
-    try {
-        world = planck.World(Vec2(0, 70.0));
-    } catch (e) {
-        showError("Failed to initialize planck.World: " + e.message);
-        return;
-    }
-
+    const world = planck.World(Vec2(0, 70.0)); // Gravity: 70.0
     const canvas = document.getElementById('pachinko-canvas');
     const ctx = canvas.getContext('2d');
 
@@ -96,71 +55,67 @@
 
     // Create Board
     function createBoard() {
-        try {
-            const ground = world.createBody();
-            
-            // Walls
-            ground.createFixture(planck.Edge(Vec2(0, 0), Vec2(0, config.height / config.scale)), { friction: 0 });
-            ground.createFixture(planck.Edge(Vec2(config.width / config.scale, 0), Vec2(config.width / config.scale, config.height / config.scale)), { friction: 0 });
+        const ground = world.createBody();
+        
+        // Walls
+        ground.createFixture(planck.Edge(Vec2(0, 0), Vec2(0, config.height / config.scale)), { friction: 0 });
+        ground.createFixture(planck.Edge(Vec2(config.width / config.scale, 0), Vec2(config.width / config.scale, config.height / config.scale)), { friction: 0 });
 
-            // Smooth Top Arch (Chain Shape)
-            const archSegments = 100;
-            const archRadiusX = (config.width / 2 + 10) / config.scale;
-            const archRadiusY = 220 / config.scale;
-            const centerX = (config.width / 2) / config.scale;
-            const centerY = 240 / config.scale;
-            
-            const archVertices = [];
-            for (let i = 0; i <= archSegments; i++) {
-                const angle = Math.PI + (i / archSegments) * Math.PI;
-                const x = centerX + Math.cos(angle) * archRadiusX;
-                const y = centerY + Math.sin(angle) * archRadiusY;
-                archVertices.push(Vec2(x, y));
-            }
-            ground.createFixture(planck.Chain(archVertices), { friction: 0, restitution: 0.8 });
+        // Smooth Top Arch (Chain Shape)
+        const archSegments = 100;
+        const archRadiusX = (config.width / 2 + 10) / config.scale;
+        const archRadiusY = 220 / config.scale;
+        const centerX = (config.width / 2) / config.scale;
+        const centerY = 240 / config.scale;
+        
+        const archVertices = [];
+        for (let i = 0; i <= archSegments; i++) {
+            const angle = Math.PI + (i / archSegments) * Math.PI;
+            const x = centerX + Math.cos(angle) * archRadiusX;
+            const y = centerY + Math.sin(angle) * archRadiusY;
+            archVertices.push(Vec2(x, y));
+        }
+        ground.createFixture(planck.Chain(archVertices), { friction: 0, restitution: 0.8 });
 
-            // Launch Rail
-            const railX = (config.width - 35) / config.scale;
-            ground.createFixture(planck.Edge(Vec2(railX, (config.height - 150) / config.scale), Vec2(railX, 300 / config.scale)), { friction: 0 });
+        // Launch Rail
+        const railX = (config.width - 35) / config.scale;
+        ground.createFixture(planck.Edge(Vec2(railX, (config.height - 150) / config.scale), Vec2(railX, 300 / config.scale)), { friction: 0 });
 
-            // Pin Area
-            const pinAreaWidth = 420;
-            const pinAreaHeight = 400;
-            const pinAreaX = (config.width - pinAreaWidth) / 2 + 5;
-            const pinAreaY = 220;
-            const pinSpacingX = 40;
-            const pinSpacingY = 35;
-            const rows = Math.floor(pinAreaHeight / pinSpacingY);
-            const cols = Math.floor(pinAreaWidth / pinSpacingX);
+        // Pin Area
+        const pinAreaWidth = 420;
+        const pinAreaHeight = 400;
+        const pinAreaX = (config.width - pinAreaWidth) / 2 + 5;
+        const pinAreaY = 220;
+        const pinSpacingX = 40;
+        const pinSpacingY = 35;
+        const rows = Math.floor(pinAreaHeight / pinSpacingY);
+        const cols = Math.floor(pinAreaWidth / pinSpacingX);
 
-            for (let r = 0; r < rows; r++) {
-                for (let c = 0; c < cols; c++) {
-                    const x = pinAreaX + (c * pinSpacingX) + (r % 2 === 0 ? 0 : pinSpacingX / 2);
-                    const y = pinAreaY + (r * pinSpacingY);
-                    
-                    if (x < (config.width - 60)) {
-                        const pin = world.createBody(Vec2(x / config.scale, y / config.scale));
-                        pin.createFixture(planck.Circle(config.pinRadius / config.scale), { friction: 0.1, restitution: 0.5 });
-                    }
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const x = pinAreaX + (c * pinSpacingX) + (r % 2 === 0 ? 0 : pinSpacingX / 2);
+                const y = pinAreaY + (r * pinSpacingY);
+                
+                if (x < (config.width - 60)) {
+                    const pin = world.createBody(Vec2(x / config.scale, y / config.scale));
+                    pin.createFixture(planck.Circle(config.pinRadius / config.scale), { friction: 0.1, restitution: 0.5 });
                 }
             }
+        }
 
-            // Bottom Gates
-            const startX = (config.width - (config.numGates * config.gateWidth)) / 2 - 20;
-            for (let i = 0; i < config.numGates; i++) {
-                const x = startX + (i * config.gateWidth) + config.gateWidth / 2;
-                ground.createFixture(planck.Edge(Vec2((x - config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x - config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
+        // Bottom Gates
+        const startX = (config.width - (config.numGates * config.gateWidth)) / 2 - 20;
+        for (let i = 0; i < config.numGates; i++) {
+            const x = startX + (i * config.gateWidth) + config.gateWidth / 2;
+            ground.createFixture(planck.Edge(Vec2((x - config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x - config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
 
-                const gate = world.createBody(Vec2(x / config.scale, (config.height - 40) / config.scale));
-                const fixture = gate.createFixture(planck.Box((config.gateWidth - 10) / (2 * config.scale), 10 / config.scale), { isSensor: true });
-                fixture.setUserData({ type: 'gate', index: i });
+            const gate = world.createBody(Vec2(x / config.scale, (config.height - 40) / config.scale));
+            const fixture = gate.createFixture(planck.Box((config.gateWidth - 10) / (2 * config.scale), 10 / config.scale), { isSensor: true });
+            fixture.setUserData({ type: 'gate', index: i });
 
-                if (i === config.numGates - 1) {
-                    ground.createFixture(planck.Edge(Vec2((x + config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x + config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
-                }
+            if (i === config.numGates - 1) {
+                ground.createFixture(planck.Edge(Vec2((x + config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x + config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
             }
-        } catch (e) {
-            showError("Error creating board: " + e.message);
         }
     }
 
@@ -209,12 +164,16 @@
             restitution: 0.5,
             density: 1.0
         });
-        ball.setUserData({ type: 'ball' });
+        
+        // Randomness in force: -5 to 5
+        const randomForce = (Math.random() * 10) - 5;
+        const baseForceY = config.minForceY + (config.maxForceY - config.minForceY) * chargeRatio;
+        const finalForceY = baseForceY + randomForce;
 
+        ball.setUserData({ type: 'ball', launched: true });
         activeBalls.push(ball);
 
-        const forceY = config.minForceY + (config.maxForceY - config.minForceY) * chargeRatio;
-        ball.applyLinearImpulse(Vec2(0, forceY), ball.getWorldCenter());
+        ball.applyLinearImpulse(Vec2(0, finalForceY), ball.getWorldCenter());
     }
 
     function stopLight() {
@@ -232,14 +191,15 @@
         const dataA = fixtureA.getUserData();
         const dataB = fixtureB.getUserData();
 
-        const ball = (dataA && dataA.type === 'ball') ? fixtureA.getBody() : ((dataB && dataB.type === 'ball') ? fixtureB.getBody() : null);
+        const ballBody = (dataA && dataA.type === 'ball') ? fixtureA.getBody() : ((dataB && dataB.type === 'ball') ? fixtureB.getBody() : null);
         const gateData = (dataA && dataA.type === 'gate') ? dataA : ((dataB && dataB.type === 'gate') ? dataB : null);
 
-        if (ball && gateData) {
+        if (ballBody && gateData) {
             if (gateData.index === activeGateIndex) {
                 ballCount += config.winReward;
+                updateUI();
             }
-            ball.setUserData({ type: 'ball', remove: true });
+            ballBody.setUserData({ type: 'ball', remove: true });
         }
     });
 
@@ -249,113 +209,118 @@
 
     // Rendering Loop
     function animate() {
-        try {
-            world.step(1 / 60);
-            ctx.clearRect(0, 0, config.width, config.height);
+        world.step(1 / 60);
+        ctx.clearRect(0, 0, config.width, config.height);
 
-            // Update Light
-            const time = Date.now();
-            if (!isLightStopped && time - lastLightUpdate > 100) {
-                lightIndex += lightDirection;
-                if (lightIndex >= config.numGates - 1 || lightIndex <= 0) lightDirection *= -1;
-                lastLightUpdate = time;
-            }
+        // Update Light
+        const time = Date.now();
+        if (!isLightStopped && time - lastLightUpdate > 100) {
+            lightIndex += lightDirection;
+            if (lightIndex >= config.numGates - 1 || lightIndex <= 0) lightDirection *= -1;
+            lastLightUpdate = time;
+        }
 
-            // Draw World
-            for (let body = world.getBodyList(); body; body = body.getNext()) {
-                const pos = body.getPosition();
-                const angle = body.getAngle();
+        // Draw World
+        for (let body = world.getBodyList(); body; body = body.getNext()) {
+            const pos = body.getPosition();
+            const angle = body.getAngle();
 
-                for (let fixture = body.getFixtureList(); fixture; fixture = fixture.getNext()) {
-                    const shape = fixture.getShape();
-                    const type = shape.getType();
-                    const data = fixture.getUserData();
+            for (let fixture = body.getFixtureList(); fixture; fixture = fixture.getNext()) {
+                const shape = fixture.getShape();
+                const type = shape.getType();
+                const data = fixture.getUserData();
 
-                    ctx.save();
-                    ctx.translate(pos.x * config.scale, pos.y * config.scale);
-                    ctx.rotate(angle);
+                ctx.save();
+                ctx.translate(pos.x * config.scale, pos.y * config.scale);
+                ctx.rotate(angle);
 
-                    if (type === 'circle') {
-                        const radius = shape.m_radius * config.scale;
-                        ctx.beginPath();
-                        ctx.arc(0, 0, radius, 0, Math.PI * 2);
-                        
-                        const bodyData = body.getUserData();
-                        if (bodyData && bodyData.type === 'ball') {
-                            ctx.fillStyle = '#ffffff';
-                            ctx.shadowBlur = 10;
-                            ctx.shadowColor = '#00ffff';
-                        } else {
-                            ctx.fillStyle = '#00ff00';
-                        }
-                        ctx.fill();
-                        ctx.closePath();
-                    } else if (type === 'edge' || type === 'chain') {
-                        ctx.beginPath();
-                        ctx.strokeStyle = '#00ffff';
-                        ctx.lineWidth = 2;
-                        ctx.shadowBlur = 5;
+                if (type === 'circle') {
+                    const radius = shape.m_radius * config.scale;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                    
+                    const bodyData = body.getUserData();
+                    if (bodyData && bodyData.type === 'ball') {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.shadowBlur = 10;
                         ctx.shadowColor = '#00ffff';
-                        
-                        const vertices = type === 'edge' ? [shape.m_vertex1, shape.m_vertex2] : shape.m_vertices;
+                    } else {
+                        ctx.fillStyle = '#00ff00';
+                    }
+                    ctx.fill();
+                    ctx.closePath();
+                } else if (type === 'edge' || type === 'chain') {
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#00ffff';
+                    ctx.lineWidth = 2;
+                    ctx.shadowBlur = 5;
+                    ctx.shadowColor = '#00ffff';
+                    
+                    const vertices = type === 'edge' ? [shape.m_vertex1, shape.m_vertex2] : shape.m_vertices;
+                    if (vertices && vertices.length > 0) {
+                        ctx.moveTo(vertices[0].x * config.scale - pos.x * config.scale, vertices[0].y * config.scale - pos.y * config.scale);
+                        for (let i = 1; i < vertices.length; i++) {
+                            ctx.lineTo(vertices[i].x * config.scale - pos.x * config.scale, vertices[i].y * config.scale - pos.y * config.scale);
+                        }
+                        ctx.stroke();
+                    }
+                    ctx.closePath();
+                } else if (type === 'polygon') {
+                    const idx = data ? data.index : -1;
+                    if (idx !== -1) {
+                        const isActive = (isLightStopped ? activeGateIndex : lightIndex) === idx;
+                        ctx.beginPath();
+                        ctx.fillStyle = isActive ? '#ccff00' : 'rgba(0, 255, 255, 0.1)';
+                        if (isActive) {
+                            ctx.shadowBlur = 15;
+                            ctx.shadowColor = '#ccff00';
+                        }
+                        const vertices = shape.m_vertices;
                         if (vertices && vertices.length > 0) {
-                            ctx.moveTo(vertices[0].x * config.scale - pos.x * config.scale, vertices[0].y * config.scale - pos.y * config.scale);
+                            ctx.moveTo(vertices[0].x * config.scale, vertices[0].y * config.scale);
                             for (let i = 1; i < vertices.length; i++) {
-                                ctx.lineTo(vertices[i].x * config.scale - pos.x * config.scale, vertices[i].y * config.scale - pos.y * config.scale);
+                                ctx.lineTo(vertices[i].x * config.scale, vertices[i].y * config.scale);
                             }
-                            ctx.stroke();
+                            ctx.fill();
                         }
                         ctx.closePath();
-                    } else if (type === 'polygon') {
-                        const idx = data ? data.index : -1;
-                        if (idx !== -1) {
-                            const isActive = (isLightStopped ? activeGateIndex : lightIndex) === idx;
-                            ctx.beginPath();
-                            ctx.fillStyle = isActive ? '#ccff00' : 'rgba(0, 255, 255, 0.1)';
-                            if (isActive) {
-                                ctx.shadowBlur = 15;
-                                ctx.shadowColor = '#ccff00';
-                            }
-                            const vertices = shape.m_vertices;
-                            if (vertices && vertices.length > 0) {
-                                ctx.moveTo(vertices[0].x * config.scale, vertices[0].y * config.scale);
-                                for (let i = 1; i < vertices.length; i++) {
-                                    ctx.lineTo(vertices[i].x * config.scale, vertices[i].y * config.scale);
-                                }
-                                ctx.fill();
-                            }
-                            ctx.closePath();
-                        }
-                    }
-                    ctx.restore();
-                }
-            }
-
-            // Handle Ball Removal
-            for (let i = activeBalls.length - 1; i >= 0; i--) {
-                const ball = activeBalls[i];
-                const data = ball.getUserData();
-                const pos = ball.getPosition();
-
-                if (data.remove || pos.y * config.scale > config.height + 50) {
-                    world.destroyBody(ball);
-                    activeBalls.splice(i, 1);
-                    updateUI();
-
-                    if (activeBalls.length === 0 && !isGameOver) {
-                        isLightStopped = false;
-                        shootBtn.disabled = true;
-                        statusMsg.innerText = "STOP LIGHT";
                     }
                 }
+                ctx.restore();
+            }
+        }
+
+        // Handle Ball Removal and Recovery
+        for (let i = activeBalls.length - 1; i >= 0; i--) {
+            const ball = activeBalls[i];
+            const data = ball.getUserData();
+            const pos = ball.getPosition();
+            const pixelX = pos.x * config.scale;
+            const pixelY = pos.y * config.scale;
+
+            // Ball Recovery: If ball falls back to the launch rail bottom
+            if (pixelX > 465 && pixelY > 750 && data.launched) {
+                ballCount++;
+                data.remove = true;
+                console.log("Ball recovered!");
             }
 
-            if (ballCount === 0 && activeBalls.length === 0 && !isGameOver) {
-                isGameOver = true;
-                gameOverOverlay.classList.add('visible');
+            if (data.remove || pixelY > config.height + 50) {
+                world.destroyBody(ball);
+                activeBalls.splice(i, 1);
+                updateUI();
+
+                if (activeBalls.length === 0 && !isGameOver) {
+                    isLightStopped = false;
+                    shootBtn.disabled = true;
+                    statusMsg.innerText = "STOP LIGHT";
+                }
             }
-        } catch (e) {
-            showError("Error in animation loop: " + e.message);
+        }
+
+        if (ballCount === 0 && activeBalls.length === 0 && !isGameOver) {
+            isGameOver = true;
+            gameOverOverlay.classList.add('visible');
         }
 
         requestAnimationFrame(animate);
@@ -372,5 +337,5 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.2.3 initialized!");
+    console.log("Pachin Planck Edition v1.2.7 initialized!");
 })();
