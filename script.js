@@ -1,4 +1,4 @@
-// Pachin v1.3.3 - Planck.js Stable Edition
+// Pachin v1.3.4 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -18,7 +18,7 @@
         winReward: 5,
         maxChargeTime: 1500,
         minForceY: -40,
-        maxForceY: -777, // Adjusted max force
+        maxForceY: -999, // Adjusted max force
         numGates: 10,
         gateWidth: 40,
         scale: 10
@@ -168,8 +168,8 @@
             density: 1.0
         });
         
-        // Randomness in force: 0 to -5
-        const randomForce = Math.random() * -5;
+        // Randomness in force: -50 to -150
+        const randomForce = (Math.random() * -100) - 50;
         const baseForceY = config.minForceY + (config.maxForceY - config.minForceY) * asymptoticRatio;
         const finalForceY = baseForceY + randomForce;
 
@@ -344,5 +344,5 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.3.3 initialized!");
+    console.log("Pachin Planck Edition v1.3.4 initialized!");
 })();
