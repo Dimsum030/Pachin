@@ -1,4 +1,4 @@
-// Pachin v1.4.7 - Planck.js Stable Edition
+// Pachin v1.4.8 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -59,6 +59,7 @@
     const stopLightBtn = document.getElementById('stop-light-btn');
     const chargeContainer = document.getElementById('charge-container');
     const chargeBar = document.getElementById('charge-bar');
+    const forceValueDisplay = document.getElementById('force-value');
 
     // Create Board
     function createBoard() {
@@ -140,6 +141,11 @@
         const duration = Math.min(Date.now() - chargeStartTime, config.maxChargeTime);
         const percent = (duration / config.maxChargeTime) * 100;
         chargeBar.style.width = `${percent}%`;
+        
+        // Real-time force display
+        const currentBaseForce = config.maxForceY * (1 - Math.exp(-0.00233 * duration));
+        forceValueDisplay.innerText = currentBaseForce.toFixed(2);
+        
         requestAnimationFrame(updateChargeBar);
     }
 
@@ -179,6 +185,7 @@
         const randomForce = (Math.random() * -25) - 5;
         const finalForceY = baseForceY + randomForce;
 
+        forceValueDisplay.innerText = finalForceY.toFixed(2);
         console.log(`Shoot: duration=${duration}ms, baseForce=${baseForceY.toFixed(2)}, finalForce=${finalForceY.toFixed(2)}`);
 
         ball.setUserData({ type: 'ball', launched: true });
@@ -362,7 +369,7 @@
     updateUI();
     animate();
     
-    console.log("Pachin Planck Edition v1.4.7 initialized!");
+    console.log("Pachin Planck Edition v1.4.8 initialized!");
     console.log("--- Physics & Game Config ---");
     console.log("Gravity:", world.getGravity().y);
     console.log("Max Force Y (Asymptote):", config.maxForceY);
