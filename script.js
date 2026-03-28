@@ -1,4 +1,4 @@
-// Pachin v1.6.3 - Planck.js Stable Edition
+// Pachin v1.6.4 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -18,18 +18,18 @@
         width: 500,
         height: 800,
         ballRadius: 15,
-        pinRadius: 8, // Bigger pins as per reference
-        initialBalls: 10,
+        pinRadius: 10, // Bigger pins as per reference
+        initialBalls: 9, // As per reference
         winReward: 5,
         maxChargeTime: 1500,
         minForceY: -100,
         maxForceY: -580,
         numGates: 6,
-        gateWidth: 75, // Wider gates
+        gateWidth: 70,
         scale: 10
     };
 
-    const tunnelWidth = 40; // Thin vertical rail on the right
+    const tunnelWidth = 45; // Vertical rail on the right
 
     let ballCount = config.initialBalls;
     let activeBalls = [];
@@ -51,7 +51,6 @@
 
     const ballCountDisplay = document.getElementById('ball-count');
     const statusLed = document.getElementById('status-led');
-    const gameOverOverlay = document.getElementById('game-over-overlay');
     const shootBtn = document.getElementById('shoot-btn');
     const stopLightBtn = document.getElementById('stop-light-btn');
     const chargeContainer = document.getElementById('charge-container');
@@ -68,9 +67,9 @@
         // 2. Smooth Top Arch - High Dome
         const archSegments = 100;
         const archRadiusX = (config.width / 2) / config.scale;
-        const archRadiusY = 250 / config.scale;
+        const archRadiusY = 280 / config.scale;
         const centerX = (config.width / 2) / config.scale;
-        const centerY = 250 / config.scale; 
+        const centerY = 280 / config.scale; 
         
         const archVertices = [];
         for (let i = 0; i <= archSegments; i++) {
@@ -83,12 +82,12 @@
 
         // 3. Launch Rail - Single vertical line on the right
         const railX = (config.width - tunnelWidth) / config.scale;
-        ground.createFixture(planck.Edge(Vec2(railX, (config.height - 100) / config.scale), Vec2(railX, 250 / config.scale)), { friction: 0 });
+        ground.createFixture(planck.Edge(Vec2(railX, (config.height - 100) / config.scale), Vec2(railX, 280 / config.scale)), { friction: 0 });
 
-        // 4. Pin Area - Staggered 4-3-4-3 Layout
+        // 4. Pin Area - Staggered 4-3-4-3-4 Layout (5 rows)
         const pinRows = 5;
-        const startY = 300;
-        const spacingY = 80;
+        const startY = 250;
+        const spacingY = 100;
         const spacingX = 100;
         const startX = 100;
 
@@ -101,7 +100,6 @@
                 const x = startX + rowOffsetX + (c * spacingX);
                 const y = startY + (r * spacingY);
                 
-                // Ensure pins don't overlap with launch rail
                 if (x < (config.width - tunnelWidth - 20)) {
                     const pin = world.createBody(Vec2(x / config.scale, y / config.scale));
                     pin.createFixture(planck.Circle(config.pinRadius / config.scale), { friction: 0.1, restitution: 0.5 });
@@ -109,8 +107,8 @@
             }
         }
 
-        // 5. Bottom Gates - Positioned to avoid tunnel
-        const startXGate = 10;
+        // 5. Bottom Gates
+        const startXGate = 15;
         for (let i = 0; i < config.numGates; i++) {
             const x = startXGate + (i * config.gateWidth) + config.gateWidth / 2;
             
@@ -252,7 +250,7 @@
                         ctx.shadowBlur = 15;
                         ctx.shadowColor = '#fff';
                     } else {
-                        ctx.fillStyle = '#ccff00'; // Lime pins as per reference
+                        ctx.fillStyle = '#ccff00';
                         ctx.shadowBlur = 10;
                         ctx.shadowColor = '#ccff00';
                     }
@@ -330,7 +328,9 @@
 
         if (ballCount === 0 && activeBalls.length === 0 && !isGameOver) {
             isGameOver = true;
-            gameOverOverlay.classList.add('visible');
+            // Simple alert for now to avoid overlay issues
+            alert("SYSTEM HALT - REBOOTING");
+            location.reload();
         }
         requestAnimationFrame(animate);
     }
@@ -344,5 +344,5 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.6.3 initialized!");
+    console.log("Pachin Planck Edition v1.6.4 initialized!");
 })();

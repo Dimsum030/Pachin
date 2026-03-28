@@ -1,111 +1,110 @@
 * {
     box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
 html, body {
-    margin: 0;
-    padding: 0;
     width: 100%;
     height: 100%;
     background-color: #000;
     overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 body {
     font-family: 'Courier New', Courier, monospace;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100dvh;
     touch-action: none;
-    color: #00ffff;
 }
 
 #game-wrapper {
     position: relative;
+    /* Strictly lock aspect ratio to 500:800 */
     width: 100vw;
-    height: 100dvh;
+    height: calc(100vw * 1.6);
+    max-width: 500px;
+    max-height: 800px;
     background-color: #000;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+}
+
+/* Handle landscape or short screens */
+@media (min-aspect-ratio: 500/800) {
+    #game-wrapper {
+        height: 100dvh;
+        width: calc(100dvh * 0.625);
+    }
 }
 
 #ui-layer {
     height: 60px;
     width: 100%;
-    padding: 0 20px;
+    padding: 0 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     z-index: 100;
-    background: #000;
 }
 
 #ui-divider {
     width: 100%;
     height: 2px;
     background: #00ffff;
-    box-shadow: 0 0 10px #00ffff;
+    box-shadow: 0 0 8px #00ffff;
 }
 
 #ball-counter {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
 }
 
 .ball-icon {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     background: #fff;
     border-radius: 50%;
-    box-shadow: 0 0 15px #fff;
+    box-shadow: 0 0 10px #fff;
 }
 
 .x-mark {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: bold;
     color: #00ffff;
 }
 
 #ball-count {
-    font-size: 36px;
+    font-size: 32px;
     font-weight: bold;
-    text-shadow: 0 0 15px #00ffff;
-}
-
-#status-indicator {
-    display: flex;
-    align-items: center;
+    text-shadow: 0 0 10px #00ffff;
 }
 
 #status-led {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     transition: all 0.3s;
 }
 
 .led-red {
     background: #ff0055;
-    box-shadow: 0 0 20px #ff0055;
+    box-shadow: 0 0 15px #ff0055;
 }
 
 .led-green {
     background: #ccff00;
-    box-shadow: 0 0 20px #ccff00;
+    box-shadow: 0 0 15px #ccff00;
 }
 
 #canvas-container {
     flex: 1;
     position: relative;
     width: 100%;
-    overflow: hidden;
     background-color: #000;
-    background-image: 
-        linear-gradient(rgba(0, 255, 255, 0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 255, 255, 0.02) 1px, transparent 1px);
-    background-size: 40px 40px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -114,16 +113,16 @@ body {
 #pachinko-canvas {
     width: 100%;
     height: 100%;
-    object-fit: fill; /* Force fill to eliminate side gaps */
+    /* Proportions are now handled by the wrapper */
 }
 
 #charge-container {
     position: absolute;
-    bottom: 20px;
+    bottom: 10px;
     left: 50%;
     transform: translateX(-50%);
-    width: 200px;
-    height: 6px;
+    width: 150px;
+    height: 4px;
     background: #111;
     border: 1px solid #00ffff;
     z-index: 150;
@@ -134,74 +133,27 @@ body {
     width: 0%;
     height: 100%;
     background: #00ffff;
-    box-shadow: 0 0 15px #00ffff;
-}
-
-#game-over-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.95);
-    display: none;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 200;
-}
-
-#game-over-overlay.visible {
-    display: flex;
-}
-
-#game-over-overlay h1 {
-    color: #ff00ff;
-    font-size: 48px;
-    text-shadow: 0 0 20px #ff00ff;
-    margin-bottom: 30px;
-}
-
-#game-over-overlay button {
-    padding: 15px 40px;
-    font-size: 24px;
-    background: transparent;
-    color: #00ffff;
-    border: 2px solid #00ffff;
-    cursor: pointer;
-    box-shadow: 0 0 15px #00ffff;
 }
 
 #button-layer {
-    height: 140px;
+    height: 130px;
     background: #000;
     display: flex;
     justify-content: space-around;
     align-items: center;
-    padding: 0 20px;
+    padding: 0 15px;
     z-index: 100;
-    position: relative;
-}
-
-#version-tag {
-    position: absolute;
-    bottom: 5px;
-    left: 10px;
-    font-size: 10px;
-    color: rgba(0, 255, 255, 0.3);
-    pointer-events: none;
 }
 
 #stop-light-btn, #shoot-btn {
     flex: 1;
-    height: 80px;
-    margin: 0 15px;
+    height: 75px;
+    margin: 0 10px;
     background: transparent;
-    font-size: 22px;
+    font-size: 20px;
     font-weight: bold;
     cursor: pointer;
     text-transform: lowercase;
-    transition: all 0.1s;
     user-select: none;
     border: 2px solid #333;
     color: #333;
@@ -210,26 +162,18 @@ body {
 #stop-light-btn {
     color: #ccff00;
     border: 2px solid #ccff00;
-    box-shadow: 0 0 15px rgba(204, 255, 0, 0.3);
-}
-
-#stop-light-btn:active {
-    background: rgba(204, 255, 0, 0.2);
+    box-shadow: 0 0 10px rgba(204, 255, 0, 0.2);
 }
 
 #shoot-btn:not(:disabled) {
     color: #00ffff;
     border: 2px solid #00ffff;
-    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
 }
 
-#shoot-btn:disabled {
-    color: #222;
-    border-color: #222;
-    box-shadow: none;
-    cursor: not-allowed;
-}
-
-#shoot-btn:not(:disabled):active {
-    background: rgba(0, 255, 255, 0.2);
+#version-tag {
+    position: absolute;
+    bottom: 3px;
+    left: 8px;
+    font-size: 9px;
+    color: rgba(0, 255, 255, 0.3);
 }
