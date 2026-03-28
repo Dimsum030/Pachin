@@ -1,4 +1,4 @@
-// Pachin v1.6.2 - Planck.js Stable Edition
+// Pachin v1.6.3 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -18,18 +18,18 @@
         width: 500,
         height: 800,
         ballRadius: 15,
-        pinRadius: 6.25,
+        pinRadius: 8, // Bigger pins as per reference
         initialBalls: 10,
         winReward: 5,
         maxChargeTime: 1500,
         minForceY: -100,
         maxForceY: -580,
         numGates: 6,
-        gateWidth: 60,
+        gateWidth: 75, // Wider gates
         scale: 10
     };
 
-    const tunnelWidth = 80; // Wide tunnel for radius 15 ball
+    const tunnelWidth = 40; // Thin vertical rail on the right
 
     let ballCount = config.initialBalls;
     let activeBalls = [];
@@ -65,12 +65,12 @@
         ground.createFixture(planck.Box(50 / config.scale, config.height / (2 * config.scale), Vec2((config.width + 50) / config.scale, config.height / (2 * config.scale))), { friction: 0 });
         ground.createFixture(planck.Box(config.width / (2 * config.scale), 50 / config.scale, Vec2(config.width / (2 * config.scale), -50 / config.scale)), { friction: 0 });
 
-        // 2. Smooth Top Arch - MOVED DOWN SIGNIFICANTLY to avoid UI
+        // 2. Smooth Top Arch - High Dome
         const archSegments = 100;
-        const archRadiusX = (config.width / 2 + 10) / config.scale;
-        const archRadiusY = 220 / config.scale;
+        const archRadiusX = (config.width / 2) / config.scale;
+        const archRadiusY = 250 / config.scale;
         const centerX = (config.width / 2) / config.scale;
-        const centerY = 350 / config.scale; // Moved down from 260
+        const centerY = 250 / config.scale; 
         
         const archVertices = [];
         for (let i = 0; i <= archSegments; i++) {
@@ -81,47 +81,47 @@
         }
         ground.createFixture(planck.Chain(archVertices), { friction: 0.2, restitution: 0.2 });
 
-        // 3. Launch Rail - Double Line Tunnel
+        // 3. Launch Rail - Single vertical line on the right
         const railX = (config.width - tunnelWidth) / config.scale;
-        ground.createFixture(planck.Edge(Vec2(railX, (config.height - 150) / config.scale), Vec2(railX, 400 / config.scale)), { friction: 0 });
+        ground.createFixture(planck.Edge(Vec2(railX, (config.height - 100) / config.scale), Vec2(railX, 250 / config.scale)), { friction: 0 });
 
-        // 4. Pin Area
-        const pinAreaWidth = config.width - tunnelWidth - 60;
-        const pinAreaHeight = 300;
-        const pinAreaX = 30;
-        const pinAreaY = 380;
-        const pinSpacingX = 85;
-        const pinSpacingY = 80;
-        const rows = Math.floor(pinAreaHeight / pinSpacingY);
-        const cols = Math.floor(pinAreaWidth / pinSpacingX);
+        // 4. Pin Area - Staggered 4-3-4-3 Layout
+        const pinRows = 5;
+        const startY = 300;
+        const spacingY = 80;
+        const spacingX = 100;
+        const startX = 100;
 
-        for (let r = 0; r < rows; r++) {
+        for (let r = 0; r < pinRows; r++) {
+            const isEven = r % 2 === 0;
+            const cols = isEven ? 4 : 3;
+            const rowOffsetX = isEven ? 0 : spacingX / 2;
+            
             for (let c = 0; c < cols; c++) {
-                const x = pinAreaX + (c * pinSpacingX) + (r % 2 === 0 ? 0 : pinSpacingX / 2);
-                const y = pinAreaY + (r * pinSpacingY);
+                const x = startX + rowOffsetX + (c * spacingX);
+                const y = startY + (r * spacingY);
                 
-                if (x < (config.width - tunnelWidth - 30)) {
+                // Ensure pins don't overlap with launch rail
+                if (x < (config.width - tunnelWidth - 20)) {
                     const pin = world.createBody(Vec2(x / config.scale, y / config.scale));
                     pin.createFixture(planck.Circle(config.pinRadius / config.scale), { friction: 0.1, restitution: 0.5 });
                 }
             }
         }
 
-        // 5. Bottom Gates - Positioned to avoid tunnel completely
-        const startX = 20;
+        // 5. Bottom Gates - Positioned to avoid tunnel
+        const startXGate = 10;
         for (let i = 0; i < config.numGates; i++) {
-            const x = startX + (i * config.gateWidth) + config.gateWidth / 2;
+            const x = startXGate + (i * config.gateWidth) + config.gateWidth / 2;
             
-            // Ensure gate doesn't enter launch area (tunnelWidth is 80, so width-80 = 420)
-            if (x + config.gateWidth / 2 < (config.width - tunnelWidth - 10)) {
+            if (x + config.gateWidth / 2 < (config.width - tunnelWidth)) {
                 ground.createFixture(planck.Edge(Vec2((x - config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x - config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
 
                 const gate = world.createBody(Vec2(x / config.scale, (config.height - 40) / config.scale));
                 const fixture = gate.createFixture(planck.Box((config.gateWidth - 10) / (2 * config.scale), 10 / config.scale), { isSensor: true });
                 fixture.setUserData({ type: 'gate', index: i });
 
-                // Last wall for the last valid gate
-                if (i === config.numGates - 1 || (startX + (i+1) * config.gateWidth + config.gateWidth/2 >= (config.width - tunnelWidth - 10))) {
+                if (i === config.numGates - 1 || (startXGate + (i+1) * config.gateWidth + config.gateWidth/2 >= (config.width - tunnelWidth))) {
                     ground.createFixture(planck.Edge(Vec2((x + config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x + config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
                 }
             }
@@ -252,9 +252,9 @@
                         ctx.shadowBlur = 15;
                         ctx.shadowColor = '#fff';
                     } else {
-                        ctx.fillStyle = '#00ff00';
-                        ctx.shadowBlur = 5;
-                        ctx.shadowColor = '#00ff00';
+                        ctx.fillStyle = '#ccff00'; // Lime pins as per reference
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = '#ccff00';
                     }
                     ctx.fill();
                     ctx.closePath();
@@ -262,7 +262,7 @@
                     ctx.beginPath();
                     ctx.strokeStyle = '#00ffff';
                     ctx.lineWidth = 3;
-                    ctx.shadowBlur = 8;
+                    ctx.shadowBlur = 10;
                     ctx.shadowColor = '#00ffff';
                     const vertices = type === 'edge' ? [shape.m_vertex1, shape.m_vertex2] : shape.m_vertices;
                     if (vertices && vertices.length > 0) {
@@ -344,5 +344,5 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.6.2 initialized!");
+    console.log("Pachin Planck Edition v1.6.3 initialized!");
 })();
