@@ -1,4 +1,4 @@
-// Pachin v1.6.4 - Planck.js Stable Edition
+// Pachin v1.6.5 - Planck.js Stable Edition
 (function() {
     const planck = window.planck;
     if (!planck) {
@@ -18,8 +18,8 @@
         width: 500,
         height: 800,
         ballRadius: 15,
-        pinRadius: 10, // Bigger pins as per reference
-        initialBalls: 9, // As per reference
+        pinRadius: 10,
+        initialBalls: 9,
         winReward: 5,
         maxChargeTime: 1500,
         minForceY: -100,
@@ -29,7 +29,7 @@
         scale: 10
     };
 
-    const tunnelWidth = 45; // Vertical rail on the right
+    const tunnelWidth = 45;
 
     let ballCount = config.initialBalls;
     let activeBalls = [];
@@ -51,6 +51,7 @@
 
     const ballCountDisplay = document.getElementById('ball-count');
     const statusLed = document.getElementById('status-led');
+    const gameOverOverlay = document.getElementById('game-over-overlay');
     const shootBtn = document.getElementById('shoot-btn');
     const stopLightBtn = document.getElementById('stop-light-btn');
     const chargeContainer = document.getElementById('charge-container');
@@ -64,12 +65,12 @@
         ground.createFixture(planck.Box(50 / config.scale, config.height / (2 * config.scale), Vec2((config.width + 50) / config.scale, config.height / (2 * config.scale))), { friction: 0 });
         ground.createFixture(planck.Box(config.width / (2 * config.scale), 50 / config.scale, Vec2(config.width / (2 * config.scale), -50 / config.scale)), { friction: 0 });
 
-        // 2. Smooth Top Arch - High Dome
+        // 2. Smooth Top Arch - Positioned with gap from UI
         const archSegments = 100;
         const archRadiusX = (config.width / 2) / config.scale;
-        const archRadiusY = 280 / config.scale;
+        const archRadiusY = 250 / config.scale;
         const centerX = (config.width / 2) / config.scale;
-        const centerY = 280 / config.scale; 
+        const centerY = 320 / config.scale; // Moved down to create gap from UI divider
         
         const archVertices = [];
         for (let i = 0; i <= archSegments; i++) {
@@ -80,14 +81,14 @@
         }
         ground.createFixture(planck.Chain(archVertices), { friction: 0.2, restitution: 0.2 });
 
-        // 3. Launch Rail - Single vertical line on the right
+        // 3. Launch Rail
         const railX = (config.width - tunnelWidth) / config.scale;
-        ground.createFixture(planck.Edge(Vec2(railX, (config.height - 100) / config.scale), Vec2(railX, 280 / config.scale)), { friction: 0 });
+        ground.createFixture(planck.Edge(Vec2(railX, (config.height - 100) / config.scale), Vec2(railX, 320 / config.scale)), { friction: 0 });
 
-        // 4. Pin Area - Staggered 4-3-4-3-4 Layout (5 rows)
+        // 4. Pin Area - Staggered 4-3-4-3-4 Layout
         const pinRows = 5;
-        const startY = 250;
-        const spacingY = 100;
+        const startY = 350;
+        const spacingY = 85;
         const spacingX = 100;
         const startX = 100;
 
@@ -328,9 +329,7 @@
 
         if (ballCount === 0 && activeBalls.length === 0 && !isGameOver) {
             isGameOver = true;
-            // Simple alert for now to avoid overlay issues
-            alert("SYSTEM HALT - REBOOTING");
-            location.reload();
+            gameOverOverlay.classList.add('visible');
         }
         requestAnimationFrame(animate);
     }
@@ -344,5 +343,5 @@
     createBoard();
     updateUI();
     animate();
-    console.log("Pachin Planck Edition v1.6.4 initialized!");
+    console.log("Pachin Planck Edition v1.6.5 initialized!");
 })();
