@@ -1,76 +1,65 @@
-// Pachin v1.6.5 - Planck.js Stable Edition
-(function() {
+// Pachin v1.7.0 - Planck.js Stable Edition
+document.addEventListener("DOMContentLoaded", () => {
     const planck = window.planck;
     if (!planck) {
-        alert("CRITICAL ERROR: Planck.js failed to load from CDN.");
+        alert("CRITICAL ERROR: Planck.js failed to load.");
         return;
     }
 
+    // Physics Settings
     if (planck.internal && planck.internal.Settings) {
         planck.internal.Settings.maxTranslation = 100.0;
-    } else if (planck.Settings) {
-        planck.Settings.maxTranslation = 100.0;
     }
 
     const Vec2 = planck.Vec2;
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const btnStop = document.getElementById("btn-stop");
+    const btnShoot = document.getElementById("btn-shoot");
+    const lifeCountDisplay = document.getElementById("life-count");
+    const indicator = document.getElementById("icon-indicator");
 
+    // Game Config (Logical Units: 500x800)
     const config = {
-        width: 500,
-        height: 800,
+        logicalWidth: 500,
+        logicalHeight: 800,
         ballRadius: 15,
         pinRadius: 10,
         initialBalls: 9,
         winReward: 5,
-        maxChargeTime: 1500,
-        minForceY: -100,
-        maxForceY: -580,
         numGates: 6,
         gateWidth: 70,
-        scale: 10
+        scale: 10 // Physics scale (10px = 1m)
     };
 
     const tunnelWidth = 45;
-
     let ballCount = config.initialBalls;
     let activeBalls = [];
     let isGameOver = false;
-    let chargeStartTime = 0;
-    let isCharging = false;
     let isLightStopped = false;
     let activeGateIndex = 0;
     let lightIndex = 0;
     let lightDirection = 1;
     let lastLightUpdate = 0;
+    let renderScale = 1;
 
+    // Initialize Physics World
     const world = planck.World(Vec2(0, 80.0));
-    const canvas = document.getElementById('pachinko-canvas');
-    const ctx = canvas.getContext('2d');
-
-    canvas.width = config.width;
-    canvas.height = config.height;
-
-    const ballCountDisplay = document.getElementById('ball-count');
-    const statusLed = document.getElementById('status-led');
-    const gameOverOverlay = document.getElementById('game-over-overlay');
-    const shootBtn = document.getElementById('shoot-btn');
-    const stopLightBtn = document.getElementById('stop-light-btn');
-    const chargeContainer = document.getElementById('charge-container');
-    const chargeBar = document.getElementById('charge-bar');
 
     function createBoard() {
         const ground = world.createBody();
         
-        // 1. THICK Walls
-        ground.createFixture(planck.Box(50 / config.scale, config.height / (2 * config.scale), Vec2(-50 / config.scale, config.height / (2 * config.scale))), { friction: 0 });
-        ground.createFixture(planck.Box(50 / config.scale, config.height / (2 * config.scale), Vec2((config.width + 50) / config.scale, config.height / (2 * config.scale))), { friction: 0 });
-        ground.createFixture(planck.Box(config.width / (2 * config.scale), 50 / config.scale, Vec2(config.width / (2 * config.scale), -50 / config.scale)), { friction: 0 });
+        // 1. Walls
+        ground.createFixture(planck.Box(50 / config.scale, config.logicalHeight / (2 * config.scale), Vec2(-50 / config.scale, config.logicalHeight / (2 * config.scale))), { friction: 0 });
+        ground.createFixture(planck.Box(50 / config.scale, config.logicalHeight / (2 * config.scale), Vec2((config.logicalWidth + 50) / config.scale, config.logicalHeight / (2 * config.scale))), { friction: 0 });
+        ground.createFixture(planck.Box(config.logicalWidth / (2 * config.scale), 50 / config.scale, Vec2(config.logicalWidth / (2 * config.scale), -50 / config.scale)), { friction: 0 });
 
-        // 2. Smooth Top Arch - Positioned with gap from UI
+        // 2. Top Arch
         const archSegments = 100;
-        const archRadiusX = (config.width / 2) / config.scale;
+        const archRadiusX = (config.logicalWidth / 2) / config.scale;
         const archRadiusY = 250 / config.scale;
-        const centerX = (config.width / 2) / config.scale;
-        const centerY = 320 / config.scale; // Moved down to create gap from UI divider
+        const centerX = (config.logicalWidth / 2) / config.scale;
+        const centerY = 320 / config.scale; 
         
         const archVertices = [];
         for (let i = 0; i <= archSegments; i++) {
@@ -82,10 +71,10 @@
         ground.createFixture(planck.Chain(archVertices), { friction: 0.2, restitution: 0.2 });
 
         // 3. Launch Rail
-        const railX = (config.width - tunnelWidth) / config.scale;
-        ground.createFixture(planck.Edge(Vec2(railX, (config.height - 100) / config.scale), Vec2(railX, 320 / config.scale)), { friction: 0 });
+        const railX = (config.logicalWidth - tunnelWidth) / config.scale;
+        ground.createFixture(planck.Edge(Vec2(railX, (config.logicalHeight - 100) / config.scale), Vec2(railX, 320 / config.scale)), { friction: 0 });
 
-        // 4. Pin Area - Staggered 4-3-4-3-4 Layout
+        // 4. Pins (4-3-4-3-4)
         const pinRows = 5;
         const startY = 350;
         const spacingY = 85;
@@ -101,61 +90,55 @@
                 const x = startX + rowOffsetX + (c * spacingX);
                 const y = startY + (r * spacingY);
                 
-                if (x < (config.width - tunnelWidth - 20)) {
+                if (x < (config.logicalWidth - tunnelWidth - 20)) {
                     const pin = world.createBody(Vec2(x / config.scale, y / config.scale));
                     pin.createFixture(planck.Circle(config.pinRadius / config.scale), { friction: 0.1, restitution: 0.5 });
                 }
             }
         }
 
-        // 5. Bottom Gates
+        // 5. Gates
         const startXGate = 15;
         for (let i = 0; i < config.numGates; i++) {
             const x = startXGate + (i * config.gateWidth) + config.gateWidth / 2;
-            
-            if (x + config.gateWidth / 2 < (config.width - tunnelWidth)) {
-                ground.createFixture(planck.Edge(Vec2((x - config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x - config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
-
-                const gate = world.createBody(Vec2(x / config.scale, (config.height - 40) / config.scale));
+            if (x + config.gateWidth / 2 < (config.logicalWidth - tunnelWidth)) {
+                ground.createFixture(planck.Edge(Vec2((x - config.gateWidth / 2) / config.scale, (config.logicalHeight - 80) / config.scale), Vec2((x - config.gateWidth / 2) / config.scale, config.logicalHeight / config.scale)), { friction: 0 });
+                const gate = world.createBody(Vec2(x / config.scale, (config.logicalHeight - 40) / config.scale));
                 const fixture = gate.createFixture(planck.Box((config.gateWidth - 10) / (2 * config.scale), 10 / config.scale), { isSensor: true });
                 fixture.setUserData({ type: 'gate', index: i });
-
-                if (i === config.numGates - 1 || (startXGate + (i+1) * config.gateWidth + config.gateWidth/2 >= (config.width - tunnelWidth))) {
-                    ground.createFixture(planck.Edge(Vec2((x + config.gateWidth / 2) / config.scale, (config.height - 80) / config.scale), Vec2((x + config.gateWidth / 2) / config.scale, config.height / config.scale)), { friction: 0 });
-                }
             }
         }
     }
 
-    function startCharging() {
-        if (ballCount <= 0 || isGameOver || isCharging || !isLightStopped || activeBalls.length > 0) return;
-        isCharging = true;
-        chargeStartTime = Date.now();
-        chargeContainer.style.display = 'block';
-        updateChargeBar();
+    function resizeCanvas() {
+        const boardInfo = canvas.parentElement.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        
+        canvas.width = boardInfo.width * dpr;
+        canvas.height = boardInfo.height * dpr;
+        
+        // Calculate the scale factor to map 500x800 logical units to actual pixels
+        const scaleX = boardInfo.width / config.logicalWidth;
+        const scaleY = boardInfo.height / config.logicalHeight;
+        renderScale = Math.min(scaleX, scaleY);
+        
+        ctx.scale(dpr, dpr);
+        // Center the game if the aspect ratio doesn't match perfectly
+        const offsetX = (boardInfo.width - (config.logicalWidth * renderScale)) / 2;
+        const offsetY = (boardInfo.height - (config.logicalHeight * renderScale)) / 2;
+        ctx.translate(offsetX, offsetY);
     }
 
-    function updateChargeBar() {
-        if (!isCharging) return;
-        const duration = Math.min(Date.now() - chargeStartTime, config.maxChargeTime);
-        const percent = (duration / config.maxChargeTime) * 100;
-        chargeBar.style.width = `${percent}%`;
-        requestAnimationFrame(updateChargeBar);
-    }
-
-    function releaseAndShoot() {
-        if (!isCharging) return;
-        const duration = Math.min(Date.now() - chargeStartTime, config.maxChargeTime);
-        isCharging = false;
-        chargeContainer.style.display = 'none';
-        chargeBar.style.width = '0%';
-
+    function shootBall() {
+        if (ballCount <= 0 || isGameOver || !isLightStopped || activeBalls.length > 0) return;
+        
         ballCount--;
-        shootBtn.disabled = true;
         updateUI();
+        btnShoot.className = "glow-btn inactive-gray";
+        btnShoot.disabled = true;
 
-        const spawnX = (config.width - tunnelWidth / 2) / config.scale;
-        const spawnY = (config.height - 40) / config.scale;
+        const spawnX = (config.logicalWidth - tunnelWidth / 2) / config.scale;
+        const spawnY = (config.logicalHeight - 40) / config.scale;
 
         const ball = world.createBody({
             type: 'dynamic',
@@ -169,57 +152,54 @@
             density: 1.0
         });
 
-        const minF = config.minForceY;
-        const maxF = config.maxForceY;
-        const baseForceY = minF + (maxF - minF) * (1 - Math.exp(-0.00233 * duration));
-        const randomForce = (Math.random() * -25) - 5;
-        const finalForceY = Math.round(baseForceY + randomForce);
-
-        ball.setUserData({ type: 'ball', launched: true, spawnTime: Date.now() });
+        const forceY = -500; // Fixed force for now
+        ball.setUserData({ type: 'ball', spawnTime: Date.now() });
         activeBalls.push(ball);
-        ball.setLinearVelocity(Vec2(0, finalForceY / 5));
+        ball.setLinearVelocity(Vec2(0, forceY / 5));
     }
 
     function stopLight() {
         if (isLightStopped || isGameOver || activeBalls.length > 0) return;
         isLightStopped = true;
         activeGateIndex = lightIndex;
-        shootBtn.disabled = false;
-        statusLed.classList.remove('led-red');
-        statusLed.classList.add('led-green');
+        
+        btnStop.className = "glow-btn inactive-gray";
+        btnShoot.className = "glow-btn active-yellow";
+        btnShoot.disabled = false;
+        
+        indicator.classList.remove('led-red');
+        indicator.classList.add('led-green');
+    }
+
+    function updateUI() {
+        lifeCountDisplay.innerHTML = `&times; ${ballCount}`;
     }
 
     world.on('begin-contact', (contact) => {
-        try {
-            const fixtureA = contact.getFixtureA();
-            const fixtureB = contact.getFixtureB();
-            const bodyA = fixtureA.getBody();
-            const bodyB = fixtureB.getBody();
-            const bodyDataA = bodyA.getUserData();
-            const bodyDataB = bodyB.getUserData();
-            const fixDataA = fixtureA.getUserData();
-            const fixDataB = fixtureB.getUserData();
+        const fixtureA = contact.getFixtureA();
+        const fixtureB = contact.getFixtureB();
+        const bodyA = fixtureA.getBody();
+        const bodyB = fixtureB.getBody();
+        const bodyDataA = bodyA.getUserData();
+        const bodyDataB = bodyB.getUserData();
+        const fixDataA = fixtureA.getUserData();
+        const fixDataB = fixtureB.getUserData();
 
-            const ballBody = (bodyDataA && bodyDataA.type === 'ball') ? bodyA : ((bodyDataB && bodyDataB.type === 'ball') ? bodyB : null);
-            const gateData = (fixDataA && fixDataA.type === 'gate') ? fixDataA : ((fixDataB && fixDataB.type === 'gate') ? fixDataB : null);
+        const ballBody = (bodyDataA && bodyDataA.type === 'ball') ? bodyA : ((bodyDataB && bodyDataB.type === 'ball') ? bodyB : null);
+        const gateData = (fixDataA && fixDataA.type === 'gate') ? fixDataA : ((fixDataB && fixDataB.type === 'gate') ? fixDataB : null);
 
-            if (ballBody && gateData) {
-                if (gateData.index === activeGateIndex) {
-                    ballCount += config.winReward;
-                    updateUI();
-                }
-                ballBody.setUserData({ type: 'ball', remove: true });
+        if (ballBody && gateData) {
+            if (gateData.index === activeGateIndex) {
+                ballCount += config.winReward;
+                updateUI();
             }
-        } catch (e) {}
+            ballBody.setUserData({ type: 'ball', remove: true });
+        }
     });
 
-    function updateUI() {
-        ballCountDisplay.innerText = ballCount;
-    }
-
-    function animate() {
+    function drawGame() {
         world.step(1 / 60);
-        ctx.clearRect(0, 0, config.width, config.height);
+        ctx.clearRect(0, 0, config.logicalWidth, config.logicalHeight);
 
         const time = Date.now();
         if (!isLightStopped && time - lastLightUpdate > 100) {
@@ -238,6 +218,7 @@
                 const data = fixture.getUserData();
 
                 ctx.save();
+                ctx.scale(renderScale, renderScale);
                 ctx.translate(pos.x * config.scale, pos.y * config.scale);
                 ctx.rotate(angle);
 
@@ -301,47 +282,39 @@
             const ball = activeBalls[i];
             const data = ball.getUserData();
             const pos = ball.getPosition();
-            const pixelX = pos.x * config.scale;
             const pixelY = pos.y * config.scale;
             const now = Date.now();
             const isProtected = (now - data.spawnTime) < 500;
 
-            if (!isProtected) {
-                if (pixelX > (config.width - tunnelWidth) && pixelY > 780 && data.launched) {
-                    ballCount++;
-                    data.remove = true;
-                }
-                if (pixelY < -2000) data.remove = true;
-            }
-
-            if (data.remove || pixelY > config.height + 50) {
+            if (!isProtected && (data.remove || pixelY > config.logicalHeight + 50 || pixelY < -2000)) {
                 world.destroyBody(ball);
                 activeBalls.splice(i, 1);
                 updateUI();
                 if (activeBalls.length === 0 && !isGameOver) {
                     isLightStopped = false;
-                    shootBtn.disabled = true;
-                    statusLed.classList.remove('led-green');
-                    statusLed.classList.add('led-red');
+                    btnStop.className = "glow-btn active-yellow";
+                    btnShoot.className = "glow-btn inactive-gray";
+                    btnShoot.disabled = true;
+                    indicator.classList.remove('led-green');
+                    indicator.classList.add('led-red');
                 }
             }
         }
 
         if (ballCount === 0 && activeBalls.length === 0 && !isGameOver) {
             isGameOver = true;
-            gameOverOverlay.classList.add('visible');
+            alert("SYSTEM HALT - REBOOTING");
+            location.reload();
         }
-        requestAnimationFrame(animate);
+        requestAnimationFrame(drawGame);
     }
 
-    shootBtn.addEventListener('mousedown', startCharging);
-    shootBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startCharging(); });
-    window.addEventListener('mouseup', releaseAndShoot);
-    window.addEventListener('touchend', releaseAndShoot);
-    stopLightBtn.addEventListener('click', stopLight);
+    btnStop.addEventListener("click", stopLight);
+    btnShoot.addEventListener("click", shootBall);
+    window.addEventListener("resize", resizeCanvas);
 
     createBoard();
+    resizeCanvas();
     updateUI();
-    animate();
-    console.log("Pachin Planck Edition v1.6.5 initialized!");
-})();
+    drawGame();
+});

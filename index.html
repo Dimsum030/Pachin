@@ -3,41 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pachin - v1.6.5</title>
-    <link rel="stylesheet" href="style.css?v=1.6.5">
+    <title>Pachin Game - v1.7.0</title>
+    <link rel="stylesheet" href="style.css?v=1.7.0">
     <script src="https://cdn.jsdelivr.net/npm/planck-js@0.3.3/dist/planck.min.js"></script>
 </head>
 <body>
-    <div id="game-wrapper">
-        <div id="ui-layer">
-            <div id="ball-counter">
-                <div class="ball-icon"></div>
-                <span class="x-mark">x</span>
-                <span id="ball-count">9</span>
-            </div>
-            <div id="status-indicator">
-                <div id="status-led" class="led-red"></div>
-            </div>
-        </div>
-        <div id="ui-divider"></div>
+    <div id="app-container">
         
-        <div id="canvas-container">
-            <canvas id="pachinko-canvas"></canvas>
-            <div id="charge-container">
-                <div id="charge-bar"></div>
+        <div id="header">
+            <div class="lives">
+                <div class="icon-ball"></div>
+                <span id="life-count">&times; 9</span>
             </div>
-            <div id="game-over-overlay">
-                <h1>SYSTEM HALT</h1>
-                <button onclick="location.reload()">REBOOT</button>
-            </div>
+            <div id="icon-indicator" class="icon-indicator led-red"></div>
         </div>
 
-        <div id="button-layer">
-            <button id="stop-light-btn">stop light</button>
-            <button id="shoot-btn" disabled>shoot</button>
-            <div id="version-tag">v1.6.5</div>
+        <div id="game-board">
+            <canvas id="gameCanvas"></canvas>
+            
+            <div id="target-slot"></div>
         </div>
+
+        <div id="controls">
+            <button id="btn-stop" class="glow-btn active-yellow">stop light</button>
+            <button id="btn-shoot" class="glow-btn inactive-gray" disabled>shoot</button>
+        </div>
+
+        <div id="version">v1.7.0</div>
     </div>
-    <script src="script.js?v=1.6.5"></script>
+
+    <script src="script.js?v=1.7.0"></script>
 </body>
 </html>
