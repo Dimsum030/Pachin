@@ -1,4 +1,4 @@
-// Pachin v1.7.0 - Planck.js Stable Edition
+// Pachin v1.7.1 - Planck.js Stable Edition
 document.addEventListener("DOMContentLoaded", () => {
     const planck = window.planck;
     if (!planck) {
@@ -49,12 +49,12 @@ document.addEventListener("DOMContentLoaded", () => {
     function createBoard() {
         const ground = world.createBody();
         
-        // 1. Walls
-        ground.createFixture(planck.Box(50 / config.scale, config.logicalHeight / (2 * config.scale), Vec2(-50 / config.scale, config.logicalHeight / (2 * config.scale))), { friction: 0 });
-        ground.createFixture(planck.Box(50 / config.scale, config.logicalHeight / (2 * config.scale), Vec2((config.logicalWidth + 50) / config.scale, config.logicalHeight / (2 * config.scale))), { friction: 0 });
-        ground.createFixture(planck.Box(config.logicalWidth / (2 * config.scale), 50 / config.scale, Vec2(config.logicalWidth / (2 * config.scale), -50 / config.scale)), { friction: 0 });
+        // 1. Walls (Invisible, handled by CSS border)
+        ground.createFixture(planck.Box(50 / config.scale, config.logicalHeight / (2 * config.scale), Vec2(-50 / config.scale, config.logicalHeight / (2 * config.scale))), { friction: 0, userData: { type: 'wall' } });
+        ground.createFixture(planck.Box(50 / config.scale, config.logicalHeight / (2 * config.scale), Vec2((config.logicalWidth + 50) / config.scale, config.logicalHeight / (2 * config.scale))), { friction: 0, userData: { type: 'wall' } });
+        ground.createFixture(planck.Box(config.logicalWidth / (2 * config.scale), 50 / config.scale, Vec2(config.logicalWidth / (2 * config.scale), -50 / config.scale)), { friction: 0, userData: { type: 'wall' } });
 
-        // 2. Top Arch
+        // 2. Top Arch (Invisible, handled by CSS border-radius)
         const archSegments = 100;
         const archRadiusX = (config.logicalWidth / 2) / config.scale;
         const archRadiusY = 250 / config.scale;
@@ -68,11 +68,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const y = centerY + Math.sin(angle) * archRadiusY;
             archVertices.push(Vec2(x, y));
         }
-        ground.createFixture(planck.Chain(archVertices), { friction: 0.2, restitution: 0.2 });
+        ground.createFixture(planck.Chain(archVertices), { friction: 0.2, restitution: 0.2, userData: { type: 'wall' } });
 
-        // 3. Launch Rail
+        // 3. Launch Rail (Visible)
         const railX = (config.logicalWidth - tunnelWidth) / config.scale;
-        ground.createFixture(planck.Edge(Vec2(railX, (config.logicalHeight - 100) / config.scale), Vec2(railX, 320 / config.scale)), { friction: 0 });
+        ground.createFixture(planck.Edge(Vec2(railX, (config.logicalHeight - 100) / config.scale), Vec2(railX, 320 / config.scale)), { friction: 0, userData: { type: 'rail' } });
 
         // 4. Pins (4-3-4-3-4)
         const pinRows = 5;
@@ -97,12 +97,12 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        // 5. Gates
+        // 5. Gates (Visible)
         const startXGate = 15;
         for (let i = 0; i < config.numGates; i++) {
             const x = startXGate + (i * config.gateWidth) + config.gateWidth / 2;
             if (x + config.gateWidth / 2 < (config.logicalWidth - tunnelWidth)) {
-                ground.createFixture(planck.Edge(Vec2((x - config.gateWidth / 2) / config.scale, (config.logicalHeight - 80) / config.scale), Vec2((x - config.gateWidth / 2) / config.scale, config.logicalHeight / config.scale)), { friction: 0 });
+                ground.createFixture(planck.Edge(Vec2((x - config.gateWidth / 2) / config.scale, (config.logicalHeight - 80) / config.scale), Vec2((x - config.gateWidth / 2) / config.scale, config.logicalHeight / config.scale)), { friction: 0, userData: { type: 'rail' } });
                 const gate = world.createBody(Vec2(x / config.scale, (config.logicalHeight - 40) / config.scale));
                 const fixture = gate.createFixture(planck.Box((config.gateWidth - 10) / (2 * config.scale), 10 / config.scale), { isSensor: true });
                 fixture.setUserData({ type: 'gate', index: i });
@@ -239,6 +239,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     ctx.fill();
                     ctx.closePath();
                 } else if (type === 'edge' || type === 'chain') {
+                    // Only draw if it's NOT a wall (walls are handled by CSS)
+                    if (data && data.type === 'wall') {
+                        ctx.restore();
+                        continue;
+                    }
+                    
                     ctx.beginPath();
                     ctx.strokeStyle = '#00ffff';
                     ctx.lineWidth = 3;
