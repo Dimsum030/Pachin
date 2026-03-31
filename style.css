@@ -1,154 +1,164 @@
 /* Pachin v1.7.0 - Planck.js Stable Edition */
 * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: Arial, sans-serif;
-    user-select: none;
-    touch-action: manipulation; /* Fixes mobile tap delays */
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  user-select: none;
+  touch-action: manipulation; /* Fixes mobile tap delays */
 }
 
 body {
-    background-color: #050505;
-    color: white;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100dvh; /* Changed to dvh to prevent mobile browser UI blocking */
-    width: 100vw;
-    overflow: hidden;
+  background-color: #050505;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100dvh;
+  min-height: 100svh;
+  width: 100vw;
+  overflow: hidden;
 }
 
-/* Constrain the game to a mobile-like aspect ratio on desktop, full width on mobile */
 #app-container {
-    width: 100%;
-    max-width: 500px;
-    height: 100dvh; /* Changed to dvh */
-    max-height: 950px;
-    display: flex;
-    flex-direction: column;
-    padding: 10px;
-    position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#game-container {
+  position: relative;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 500 / 800;
+}
+
+/* --- Game Board --- */
+#game-board {
+  width: 100%;
+  height: calc(100% - 40px);
+  border: 3px solid #00ffff;
+  /* Creating the domed top from your design */
+  border-top-left-radius: 180px 100px;
+  border-top-right-radius: 180px 100px;
+  /* Neon Glow Effect */
+  box-shadow:
+    inset 0 0 10px rgba(0, 255, 255, 0.4),
+    0 0 10px rgba(0, 255, 255, 0.4);
+  overflow: hidden;
 }
 
 /* --- Header UI --- */
 #header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 5px 20px 5px;
-    font-size: 20px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  font-size: 20px;
+  z-index: 10;
 }
 
 .lives {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .icon-ball {
-    width: 22px;
-    height: 22px;
-    background-color: white;
-    border-radius: 50%;
+  width: 22px;
+  height: 22px;
+  background-color: white;
+  box-shadow: 0 0 8px white;
+  border-radius: 50%;
 }
 
 .icon-indicator {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    transition: all 0.3s;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  transition: all 0.3s;
 }
 
 .led-red {
-    background-color: #ff0055;
-    box-shadow: 0 0 15px #ff0055;
+  background-color: #ff0055;
+  box-shadow: 0 0 15px #ff0055;
 }
 
 .led-green {
-    background-color: #39FF14;
-    box-shadow: 0 0 15px #39FF14;
-}
-
-/* --- Game Board (Neon Outline) --- */
-#game-board {
-    flex-grow: 1; /* Takes up remaining vertical space automatically */
-    position: relative;
-    border: 3px solid #00FFFF;
-    /* Creating the domed top from your design */
-    border-top-left-radius: 180px 100px;
-    border-top-right-radius: 180px 100px;
-    
-    /* Neon Glow Effect */
-    box-shadow: 
-        inset 0 0 10px rgba(0, 255, 255, 0.4),
-        0 0 10px rgba(0, 255, 255, 0.4);
-    
-    background-color: #000;
-    overflow: hidden;
-    margin-bottom: 20px;
-    
-    /* Lock aspect ratio to match physics engine (500x800) */
-    aspect-ratio: 500 / 800;
-    margin-left: auto;
-    margin-right: auto;
-    max-height: calc(100dvh - 180px); /* Ensure it doesn't push buttons off screen */
+  background-color: #39ff14;
+  box-shadow: 0 0 15px #39ff14;
 }
 
 /* Canvas automatically sizes to fit the glowing container */
 canvas {
-    width: 100%;
-    height: 100%;
-    display: block;
+  width: 100%;
+  height: 100%;
 }
 
 /* --- Bottom Controls --- */
 #controls {
-    display: flex;
-    justify-content: space-between;
-    gap: 15px;
-    padding-bottom: 25px;
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding-bottom: 25px;
 }
 
 .glow-btn {
-    flex: 1;
-    background: transparent;
-    padding: 22px 10px;
-    font-size: 22px;
-    font-weight: bold;
-    text-align: center;
-    border-radius: 2px;
-    cursor: pointer;
-    transition: 0.2s ease-out;
+  flex: 1;
+  height: 40px;
+  background: transparent;
+  font-size: 22px;
+  font-weight: bold;
+  text-align: center;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: 0.2s ease-out;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 /* Yellow Active Button */
 .active-yellow {
-    color: #ccff00;
-    border: 2px solid #ccff00;
-    box-shadow: 
-        0 0 10px rgba(204, 255, 0, 0.2), 
-        inset 0 0 10px rgba(204, 255, 0, 0.2);
-    text-shadow: 0 0 5px #ccff00;
+  color: #ccff00;
+  border: 2px solid #ccff00;
+  box-shadow:
+    0 0 10px rgba(204, 255, 0, 0.2),
+    inset 0 0 10px rgba(204, 255, 0, 0.2);
+  text-shadow: 0 0 5px #ccff00;
 }
 
 .active-yellow:active {
-    background-color: rgba(204, 255, 0, 0.1);
+  background-color: rgba(204, 255, 0, 0.1);
 }
 
 /* Gray Inactive Button */
 .inactive-gray {
-    color: #333;
-    border: 2px solid #222;
-    cursor: not-allowed;
+  color: #333;
+  border: 2px solid #222;
+  cursor: not-allowed;
 }
 
 /* Version text */
 #version {
-    position: absolute;
-    bottom: 5px;
-    left: 10px;
-    font-size: 12px;
-    color: #2b3b40;
-    font-family: monospace;
+  position: absolute;
+  bottom: 5px;
+  left: 10px;
+  font-size: 12px;
+  color: #2b3b40;
+  font-family: monospace;
+}
+
+/* If viewport is wider than the game ratio, fit by height instead of width */
+@media (min-aspect-ratio: 500 / 800) {
+  #game-container {
+    width: auto;
+    height: 100%;
+  }
 }

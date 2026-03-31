@@ -42,6 +42,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let lightDirection = 1;
     let lastLightUpdate = 0;
     let renderScale = 1;
+    let renderOffsetX = 0;
+    let renderOffsetY = 0;
+    let renderDpr = 1;
 
     // Initialize Physics World
     const world = planck.World(Vec2(0, 80.0));
@@ -112,21 +115,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function resizeCanvas() {
         const boardInfo = canvas.parentElement.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
+        renderDpr = window.devicePixelRatio || 1;
         
-        canvas.width = boardInfo.width * dpr;
-        canvas.height = boardInfo.height * dpr;
+        canvas.width = boardInfo.width * renderDpr;
+        canvas.height = boardInfo.height * renderDpr;
         
         // Calculate the scale factor to map 500x800 logical units to actual pixels
         const scaleX = boardInfo.width / config.logicalWidth;
         const scaleY = boardInfo.height / config.logicalHeight;
         renderScale = Math.min(scaleX, scaleY);
         
-        ctx.scale(dpr, dpr);
         // Center the game if the aspect ratio doesn't match perfectly
-        const offsetX = (boardInfo.width - (config.logicalWidth * renderScale)) / 2;
-        const offsetY = (boardInfo.height - (config.logicalHeight * renderScale)) / 2;
-        ctx.translate(offsetX, offsetY);
+        renderOffsetX = (boardInfo.width - (config.logicalWidth * renderScale)) / 2;
+        renderOffsetY = (boardInfo.height - (config.logicalHeight * renderScale)) / 2;
     }
 
     function shootBall() {
@@ -199,7 +200,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function drawGame() {
         world.step(1 / 60);
-        ctx.clearRect(0, 0, config.logicalWidth, config.logicalHeight);
+        // Always reset transform before clearing to avoid cumulative resize drift.
+        ctx.setTransform(renderDpr, 0, 0, renderDpr, 0, 0);
+        ctx.clearRect(0, 0, canvas.width / renderDpr, canvas.height / renderDpr);
+        ctx.setTransform(
+            renderScale * renderDpr,
+            0,
+            0,
+            renderScale * renderDpr,
+            renderOffsetX * renderDpr,
+            renderOffsetY * renderDpr
+        );
 
         const time = Date.now();
         if (!isLightStopped && time - lastLightUpdate > 100) {
@@ -218,7 +229,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 const data = fixture.getUserData();
 
                 ctx.save();
-                ctx.scale(renderScale, renderScale);
                 ctx.translate(pos.x * config.scale, pos.y * config.scale);
                 ctx.rotate(angle);
 
