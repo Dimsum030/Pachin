@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100svh;
+    color: #ffffff;
+  }
+}
+
+@layer components {
+  .btn-neon {
+    @apply rounded-sm border-2 bg-transparent px-3 py-4 text-center text-xl font-bold tracking-wide transition;
+  }
+
+  .btn-neon-active {
+    @apply border-neon-lime text-neon-lime shadow-neon-lime;
+    text-shadow: 0 0 6px #ccff00;
+  }
+
+  .btn-neon-active:active {
+    background-color: rgba(204, 255, 0, 0.14);
+  }
+
+  .btn-neon-inactive {
+    @apply cursor-not-allowed border-zinc-800 text-zinc-700;
+  }
+}

@@ -6,36 +6,10 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <title>Pachin Game - v1.7.1</title>
-    <link rel="stylesheet" href="style.css?v=1.7.1" />
-    <script src="https://cdn.jsdelivr.net/npm/planck-js@0.3.3/dist/planck.min.js"></script>
+    <title>Pachin Game - v2.0.0</title>
   </head>
-  <body>
-    <div id="app-container">
-      <div id="header">
-        <div class="lives">
-          <div class="icon-ball"></div>
-          <span id="life-count">&times; 9</span>
-        </div>
-        <div id="icon-indicator" class="icon-indicator led-red"></div>
-      </div>
-      <div id="game-container">
-        <div id="game-board">
-          <canvas id="gameCanvas"></canvas>
-
-          <div id="target-slot"></div>
-        </div>
-      </div>
-      <div id="controls">
-        <button id="btn-stop" class="glow-btn active-yellow">stop light</button>
-        <button id="btn-shoot" class="glow-btn inactive-gray" disabled>
-          shoot
-        </button>
-      </div>
-
-      <div id="version">v1.7.1</div>
-    </div>
-
-    <script src="script.js?v=1.7.1"></script>
+  <body class="bg-zinc-950">
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
