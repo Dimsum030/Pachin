@@ -7,10 +7,14 @@ if (!mountNode) throw new Error("Missing #app root element.");
 
 const uiElements = renderApp(mountNode);
 const gameUI = createGameUI(uiElements);
-const engine = new GameEngine({ canvas: uiElements.canvas, ui: gameUI });
+const engine = new GameEngine({
+  canvas: uiElements.canvas,
+  backgroundCanvas: uiElements.backgroundCanvas,
+  ui: gameUI,
+});
 
 uiElements.stopButton.addEventListener("click", () => engine.stopLight());
 uiElements.shootButton.addEventListener("click", () => engine.shootBall());
 window.addEventListener("resize", () => engine.resizeCanvas());
 
-engine.start();
+void engine.start();

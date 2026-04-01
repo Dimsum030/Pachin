@@ -11,4 +11,13 @@ export const CONFIG: GameConfig = {
   gateWidth: 70,
   scale: 10,
   tunnelWidth: 45,
+  boardDepth: 4,
+  gravity: 40,
+  launchSpeed: 86,
+  fixedStep: 1 / 60,
+  maxFrameDelta: 0.05,
+  lightSweepIntervalMs: 100,
+  ballCleanupDelayMs: 500,
+  ballOutBottomOffset: 4,
+  ballOutTopOffset: 10,
 };

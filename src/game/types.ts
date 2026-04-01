@@ -1,4 +1,5 @@
-import type { Body } from "planck-js";
+import type * as THREE from "three";
+import type RAPIER from "@dimforge/rapier3d-compat";
 
 export type IndicatorState = "red" | "green";
 
@@ -13,20 +14,27 @@ export interface GameConfig {
   gateWidth: number;
   scale: number;
   tunnelWidth: number;
+  boardDepth: number;
+  gravity: number;
+  launchSpeed: number;
+  fixedStep: number;
+  maxFrameDelta: number;
+  lightSweepIntervalMs: number;
+  ballCleanupDelayMs: number;
+  ballOutBottomOffset: number;
+  ballOutTopOffset: number;
 }
 
-export interface BallBodyData {
-  type: "ball";
+export interface ActiveBall {
+  body: RAPIER.RigidBody;
+  mesh: THREE.Mesh;
   spawnTime: number;
   remove?: true;
 }
 
-export interface WallFixtureData {
-  type: "wall" | "rail";
-}
-
-export interface GateFixtureData {
-  type: "gate";
+export interface GateSensor {
+  collider: RAPIER.Collider;
+  mesh: THREE.Mesh;
   index: number;
 }
 
@@ -36,6 +44,7 @@ export interface UIElements {
   stopButton: HTMLButtonElement;
   shootButton: HTMLButtonElement;
   canvas: HTMLCanvasElement;
+  backgroundCanvas: HTMLCanvasElement;
 }
 
 export interface GameUI {
@@ -45,5 +54,5 @@ export interface GameUI {
 }
 
 export interface GameRefs {
-  activeBalls: Body[];
+  activeBalls: ActiveBall[];
 }

@@ -12,25 +12,178 @@
   body {
     margin: 0;
     min-height: 100svh;
+    min-height: 100dvh;
     color: #ffffff;
+    background: #111827;
+  }
+
+  #app {
+    min-height: 100dvh;
   }
 }
 
 @layer components {
-  .btn-neon {
-    @apply rounded-sm border-2 bg-transparent px-3 py-4 text-center text-xl font-bold tracking-wide transition;
+  .app-shell {
+    @apply relative mx-auto flex min-h-dvh w-full max-w-[720px] flex-col overflow-hidden px-3 text-zinc-50 sm:px-4;
   }
 
-  .btn-neon-active {
-    @apply border-neon-lime text-neon-lime shadow-neon-lime;
-    text-shadow: 0 0 6px #ccff00;
+  .bg-hex-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    width: 100vw;
+    height: 100dvh;
+    pointer-events: none;
   }
 
-  .btn-neon-active:active {
-    background-color: rgba(204, 255, 0, 0.14);
+  .app-glow {
+    @apply hidden;
   }
 
-  .btn-neon-inactive {
-    @apply cursor-not-allowed border-zinc-800 text-zinc-700;
+  .app-glow-top {
+    width: 40vw;
+    height: 40vw;
+    max-width: 260px;
+    max-height: 260px;
+    left: -15%;
+    top: -10%;
+    background: rgba(34, 211, 238, 0.2);
+  }
+
+  .app-glow-bottom {
+    width: 36vw;
+    height: 36vw;
+    max-width: 220px;
+    max-height: 220px;
+    right: -12%;
+    bottom: 12%;
+    background: rgba(204, 255, 0, 0.15);
+  }
+
+  .app-header {
+    position: fixed;
+    z-index: 30;
+    top: max(10px, env(safe-area-inset-top));
+    left: 12px;
+    right: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .chip {
+    @apply flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-900/75 px-3 py-2 shadow-[0_12px_20px_rgba(0,0,0,0.25)] backdrop-blur-md;
+  }
+
+  .chip-orb {
+    @apply h-3 w-3 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)];
+  }
+
+  .chip-label {
+    @apply text-[11px] uppercase tracking-[0.2em] text-zinc-400;
+  }
+
+  .chip-value {
+    @apply ml-auto text-base font-semibold text-zinc-100;
+  }
+
+  .status-dot {
+    @apply ml-auto h-3.5 w-3.5 rounded-full transition-all;
+  }
+
+  .status-dot-red {
+    background: #ff4d7d;
+    box-shadow: 0 0 14px #ff4d7d;
+  }
+
+  .status-dot-green {
+    background: #58ff3e;
+    box-shadow: 0 0 14px #58ff3e;
+  }
+
+  .app-main {
+    @apply z-10 flex items-center justify-center;
+    min-height: 100dvh;
+    padding-top: calc(56px + env(safe-area-inset-top));
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+
+  .game-board-frame {
+    @apply relative aspect-[500/800] w-full overflow-hidden rounded-[24px];
+    width: min(100%, calc((100dvh - 164px) * 0.625));
+    max-height: calc(100dvh - 164px);
+    background: rgba(8, 12, 20, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow:
+      inset 0 0 0 2px rgba(255, 255, 255, 0.05),
+      0 24px 52px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(112, 194, 255, 0.18);
+  }
+
+  .game-board-frame::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: 24px;
+    border: 2px solid rgba(157, 214, 255, 0.45);
+    box-shadow:
+      inset 0 0 12px rgba(167, 219, 255, 0.2),
+      0 0 18px rgba(136, 206, 255, 0.18);
+    z-index: 2;
+  }
+
+  .game-board-frame::after {
+    content: "";
+    position: absolute;
+    left: 2.4%;
+    right: 2.4%;
+    top: 1.8%;
+    height: 6%;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.01));
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .game-canvas {
+    @apply block h-full w-full;
+  }
+
+  .app-controls {
+    position: fixed;
+    z-index: 30;
+    left: 12px;
+    right: 12px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .btn-modern {
+    @apply rounded-xl border px-3 py-3 text-center text-sm font-semibold uppercase tracking-[0.12em] transition sm:py-4 sm:text-base;
+  }
+
+  .btn-modern-active {
+    color: #ddff6f;
+    border-color: rgba(221, 255, 111, 0.75);
+    background: linear-gradient(180deg, rgba(221, 255, 111, 0.2), rgba(221, 255, 111, 0.08));
+    box-shadow:
+      0 0 0 1px rgba(221, 255, 111, 0.18),
+      0 10px 20px rgba(118, 165, 16, 0.28);
+  }
+
+  .btn-modern-active:active {
+    transform: translateY(1px);
+  }
+
+  .btn-modern-inactive {
+    @apply cursor-not-allowed border-zinc-700/70 bg-zinc-900/60 text-zinc-500;
+  }
+
+  .version-badge {
+    @apply pointer-events-none fixed left-1/2 z-20 -translate-x-1/2 text-[11px] uppercase tracking-[0.2em] text-zinc-600;
+    bottom: calc(76px + env(safe-area-inset-bottom));
   }
 }
