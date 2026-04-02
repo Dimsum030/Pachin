@@ -24,7 +24,7 @@
 
 @layer components {
   .app-shell {
-    @apply relative mx-auto flex min-h-dvh w-full max-w-[720px] flex-col overflow-hidden px-3 text-zinc-50 sm:px-4;
+    @apply relative mx-auto flex min-h-dvh w-full max-w-[720px] flex-col overflow-hidden text-zinc-50;
   }
 
   .bg-hex-canvas {
@@ -104,14 +104,14 @@
   .app-main {
     @apply z-10 flex items-center justify-center;
     min-height: 100dvh;
-    padding-top: calc(56px + env(safe-area-inset-top));
-    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+    
+    
   }
 
   .game-board-frame {
-    @apply relative aspect-[500/800] w-full overflow-hidden rounded-[24px];
-    width: min(100%, calc((100dvh - 164px) * 0.625));
-    max-height: calc(100dvh - 164px);
+    @apply absolute inset-0 w-full h-full overflow-hidden;
+    
+    
     background: rgba(8, 12, 20, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.22);
     transition:
@@ -137,7 +137,7 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    border-radius: 24px;
+    border-radius: 0;
     border: 2px solid rgba(157, 214, 255, 0.45);
     box-shadow:
       inset 0 0 12px rgba(167, 219, 255, 0.2),
