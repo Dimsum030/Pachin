@@ -7,6 +7,7 @@ import type { ActiveBall, GameUI, GateSensor, GameConfig } from "./types";
 interface EngineDeps {
   canvas: HTMLCanvasElement;
   backgroundCanvas: HTMLCanvasElement;
+  gameBoard: HTMLElement;
   ui: GameUI;
   config?: GameConfig;
 }
@@ -15,8 +16,11 @@ export class GameEngine {
   private readonly canvas: HTMLCanvasElement;
   private readonly backgroundCanvas: HTMLCanvasElement;
   private readonly backgroundCtx: CanvasRenderingContext2D;
+  private readonly gameBoard: HTMLElement;
   private readonly ui: GameUI;
   private readonly config: GameConfig;
+  private readonly boardWidth: number;
+  private readonly boardHeight: number;
   private world: RAPIER.World | null = null;
   private eventQueue: RAPIER.EventQueue | null = null;
   private readonly scene: THREE.Scene;
@@ -35,18 +39,28 @@ export class GameEngine {
   private accumulator = 0;
   private rafId = 0;
   private pointer = { x: 0, y: 0, active: false };
-  private hexGlowLevels = new Float32Array(0);
-  private hexLayout = {
+  private readonly raycaster = new THREE.Raycaster();
+  private hexBoardTexture: THREE.CanvasTexture | null = null;
+  private hexBoardBaseCanvas: HTMLCanvasElement | null = null;
+  private hexBoardLayout = {
     cols: 0,
     rows: 0,
-    size: 28,
+    size: 0.36,
     hStep: 0,
     vStep: 0,
+    texW: 0,
+    texH: 0,
+    boardW: 0,
+    boardH: 0,
   };
+  private readonly hexPlaneZ = -0.38;
+  private borderHotUntil = 0;
+  private borderIsHot = false;
 
-  constructor({ canvas, backgroundCanvas, ui, config = CONFIG }: EngineDeps) {
+  constructor({ canvas, backgroundCanvas, gameBoard, ui, config = CONFIG }: EngineDeps) {
     this.canvas = canvas;
     this.backgroundCanvas = backgroundCanvas;
+    this.gameBoard = gameBoard;
     this.ui = ui;
     this.config = config;
     this.ballCount = config.initialBalls;
@@ -57,9 +71,12 @@ export class GameEngine {
 
     const boardWidth = this.config.logicalWidth / this.config.scale;
     const boardHeight = this.config.logicalHeight / this.config.scale;
-    this.camera = new THREE.PerspectiveCamera(36, 1, 0.1, 240);
-    this.camera.position.set(boardWidth / 2, boardHeight / 2 + 4.5, 86);
-    this.camera.lookAt(boardWidth / 2, boardHeight / 2 - 2.5, -2);
+    this.boardWidth = boardWidth;
+    this.boardHeight = boardHeight;
+    // Wide FOV (>90°) + low oblique eye line = arcade cabinet in front of you, not a top-down map.
+    this.camera = new THREE.PerspectiveCamera(102, 1, 0.1, 320);
+    this.applyCabinetCamera(boardWidth, boardHeight);
+    this.camera.updateProjectionMatrix();
 
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -101,13 +118,10 @@ export class GameEngine {
     if (!board) return;
     const rect = board.getBoundingClientRect();
     this.renderer.setSize(rect.width, rect.height, false);
+    this.camera.aspect = rect.width / rect.height;
     const boardWidth = this.config.logicalWidth / this.config.scale;
     const boardHeight = this.config.logicalHeight / this.config.scale;
-    this.camera.aspect = rect.width / rect.height;
-    this.camera.position.x = boardWidth / 2;
-    this.camera.position.y = boardHeight / 2 + 4.5;
-    this.camera.position.z = 86;
-    this.camera.lookAt(boardWidth / 2, boardHeight / 2 - 2.5, -2);
+    this.applyCabinetCamera(boardWidth, boardHeight);
     this.camera.updateProjectionMatrix();
     this.resizeBackgroundCanvas();
   }
@@ -181,6 +195,7 @@ export class GameEngine {
       this.accumulator -= this.config.fixedStep;
     }
     this.syncMeshesToPhysics();
+    this.updateBorderHeat(now);
     this.updateGateVisuals();
     this.cleanupBalls();
     this.handleGameOver();
@@ -266,8 +281,121 @@ export class GameEngine {
     await RAPIER.init();
     this.world = new RAPIER.World({ x: 0, y: -this.config.gravity, z: 0 });
     this.eventQueue = new RAPIER.EventQueue(true);
+    const boardWidth = this.config.logicalWidth / this.config.scale;
+    const boardHeight = this.config.logicalHeight / this.config.scale;
+    this.setupHexBoardPlane(boardWidth, boardHeight);
     const built = createBoard(this.scene, this.world, this.config, RAPIER);
     this.gateSensors = built.gateSensors;
+  }
+
+  private setupHexBoardPlane(boardWidth: number, boardHeight: number): void {
+    const texW = 768;
+    const texH = Math.max(256, Math.round((texW * boardHeight) / boardWidth));
+    const canvas = document.createElement("canvas");
+    canvas.width = texW;
+    canvas.height = texH;
+    this.hexBoardBaseCanvas = document.createElement("canvas");
+    this.hexBoardBaseCanvas.width = texW;
+    this.hexBoardBaseCanvas.height = texH;
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 4;
+    this.hexBoardTexture = texture;
+
+    const mat = new THREE.MeshBasicMaterial({
+      map: texture,
+      depthWrite: false,
+    });
+    const geom = new THREE.PlaneGeometry(boardWidth, boardHeight);
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.position.set(boardWidth / 2, boardHeight / 2, this.hexPlaneZ);
+    mesh.renderOrder = -10;
+    this.scene.add(mesh);
+
+    const hexR = 0.36;
+    const hStep = Math.sqrt(3) * hexR;
+    const vStep = hexR * 1.5;
+    const cols = Math.ceil(boardWidth / hStep) + 6;
+    const rows = Math.ceil(boardHeight / vStep) + 6;
+    this.hexBoardLayout = {
+      cols,
+      rows,
+      size: hexR,
+      hStep,
+      vStep,
+      texW,
+      texH,
+      boardW: boardWidth,
+      boardH: boardHeight,
+    };
+
+    this.buildHexBoardBaseTexture();
+  }
+
+  private buildHexBoardBaseTexture(): void {
+    if (!this.hexBoardBaseCanvas) return;
+    const ctx = this.hexBoardBaseCanvas.getContext("2d");
+    if (!ctx) return;
+    const { texW, texH } = this.hexBoardLayout;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = "#111827";
+    ctx.fillRect(0, 0, texW, texH);
+
+    // Create a small repeating tile with a few hex outlines.
+    const tileW = 160;
+    const tileH = 140;
+    const tile = document.createElement("canvas");
+    tile.width = tileW;
+    tile.height = tileH;
+    const tctx = tile.getContext("2d");
+    if (!tctx) return;
+
+    tctx.setTransform(1, 0, 0, 1, 0, 0);
+    tctx.clearRect(0, 0, tileW, tileH);
+    tctx.lineWidth = 1.2;
+    tctx.strokeStyle = "rgba(120, 165, 200, 0.14)";
+
+    const r = 22;
+    const hStep = Math.sqrt(3) * r;
+    const vStep = r * 1.5;
+    for (let row = -1; row <= 3; row += 1) {
+      const y = row * vStep + r * 0.75;
+      for (let col = -1; col <= 4; col += 1) {
+        const x = col * hStep + (row % 2 === 1 ? hStep * 0.5 : 0) + r * 0.75;
+        this.drawHexPath(tctx, x, y, r);
+        tctx.stroke();
+      }
+    }
+
+    // A few faint accent strokes for depth.
+    tctx.strokeStyle = "rgba(0, 220, 255, 0.07)";
+    tctx.lineWidth = 1.6;
+    for (let i = 0; i < 3; i += 1) {
+      const x = (i + 1) * hStep * 0.9;
+      const y = (i + 1) * vStep * 0.75;
+      this.drawHexPath(tctx, x, y, r);
+      tctx.stroke();
+    }
+
+    const pattern = ctx.createPattern(tile, "repeat");
+    if (!pattern) return;
+    ctx.strokeStyle = "rgba(255,255,255,0)";
+    ctx.fillStyle = pattern;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillRect(0, 0, texW, texH);
+  }
+
+  private drawHexPath(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, radius: number): void {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i += 1) {
+      const angle = (Math.PI / 180) * (60 * i - 30);
+      const x = centerX + radius * Math.cos(angle);
+      const y = centerY + radius * Math.sin(angle);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
   }
 
   private updateGateVisuals(): void {
@@ -294,6 +422,28 @@ export class GameEngine {
     return undefined;
   }
 
+  /**
+   * Centered perspective: camera on board centerline (X), no lateral offset (avoids crooked horizon).
+   * Sits in front on +Z with a small downward Y offset so the playfield reads upright.
+   */
+  private applyCabinetCamera(boardWidth: number, boardHeight: number): void {
+    const cx = boardWidth / 2;
+    const cy = boardHeight / 2;
+    const target = new THREE.Vector3(cx, cy, 0);
+    this.camera.up.set(0, 1, 0);
+
+    const fovRad = THREE.MathUtils.degToRad(this.camera.fov);
+    const margin = 1.08;
+    const halfH = (boardHeight * margin) / 2;
+    const halfW = (boardWidth * margin) / 2;
+    const distV = halfH / Math.tan(fovRad / 2);
+    const distH = halfW / (Math.tan(fovRad / 2) * Math.max(this.camera.aspect, 0.01));
+    const distZ = Math.max(distV, distH) * 1.04;
+    const yBelowCenter = boardHeight * 0.055;
+    this.camera.position.set(cx, cy - yBelowCenter, distZ);
+    this.camera.lookAt(target);
+  }
+
   private readonly handlePointerMove = (event: PointerEvent): void => {
     this.pointer.x = event.clientX;
     this.pointer.y = event.clientY;
@@ -312,98 +462,126 @@ export class GameEngine {
     this.backgroundCanvas.height = Math.floor(height * dpr);
     this.backgroundCtx.setTransform(1, 0, 0, 1, 0, 0);
     this.backgroundCtx.scale(dpr, dpr);
-
-    const hexSize = Math.max(20, Math.min(34, Math.floor(Math.min(width, height) / 24)));
-    const hStep = Math.sqrt(3) * hexSize;
-    const vStep = hexSize * 1.5;
-    const cols = Math.ceil(width / hStep) + 2;
-    const rows = Math.ceil(height / vStep) + 2;
-    this.hexLayout = { cols, rows, size: hexSize, hStep, vStep };
-    this.hexGlowLevels = new Float32Array(cols * rows);
   }
 
   private renderBackgroundHex(): void {
-    const ctx = this.backgroundCtx;
-    const width = this.backgroundCanvas.width / (Math.min(window.devicePixelRatio || 1, 2));
-    const height = this.backgroundCanvas.height / (Math.min(window.devicePixelRatio || 1, 2));
-    ctx.clearRect(0, 0, width, height);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = this.backgroundCanvas.width / dpr;
+    const h = this.backgroundCanvas.height / dpr;
+    this.backgroundCtx.setTransform(1, 0, 0, 1, 0, 0);
+    this.backgroundCtx.clearRect(0, 0, this.backgroundCanvas.width, this.backgroundCanvas.height);
+    this.backgroundCtx.scale(dpr, dpr);
+    this.backgroundCtx.fillStyle = "#111827";
+    this.backgroundCtx.fillRect(0, 0, w, h);
+    this.renderHexBoardPlane();
+  }
 
-    const { cols, rows, size, hStep, vStep } = this.hexLayout;
-    if (cols === 0 || rows === 0) return;
+  private getPointerOnBoardPlane(): { x: number; y: number } | null {
+    if (!this.pointer.active) return null;
+    const rect = this.canvas.getBoundingClientRect();
+    const ndcX = ((this.pointer.x - rect.left) / rect.width) * 2 - 1;
+    const ndcY = -((this.pointer.y - rect.top) / rect.height) * 2 + 1;
+    this.raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+    const plane = new THREE.Plane();
+    plane.setFromNormalAndCoplanarPoint(
+      new THREE.Vector3(0, 0, 1),
+      new THREE.Vector3(0, 0, this.hexPlaneZ)
+    );
+    const hit = new THREE.Vector3();
+    if (!this.raycaster.ray.intersectPlane(plane, hit)) return null;
+    const pad = 2;
+    const { boardW, boardH } = this.hexBoardLayout;
+    if (
+      hit.x < -pad ||
+      hit.x > boardW + pad ||
+      hit.y < -pad ||
+      hit.y > boardH + pad
+    ) {
+      return null;
+    }
+    return { x: hit.x, y: hit.y };
+  }
 
-    const ballPoints = this.collectBallScreenPoints();
-    let index = 0;
-    for (let row = 0; row < rows; row += 1) {
-      const y = row * vStep;
-      for (let col = 0; col < cols; col += 1) {
-        const x = col * hStep + (row % 2 === 1 ? hStep * 0.5 : 0);
-        let targetGlow = 0;
+  private renderHexBoardPlane(): void {
+    if (!this.hexBoardTexture) return;
+    const canvas = this.hexBoardTexture.image as HTMLCanvasElement;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const { texW, texH, boardW, boardH } = this.hexBoardLayout;
+    if (texW === 0 || texH === 0) return;
 
-        if (this.pointer.active) {
-          const dx = x - this.pointer.x;
-          const dy = y - this.pointer.y;
-          const dist = Math.hypot(dx, dy);
-          targetGlow = Math.max(targetGlow, Math.max(0, 1 - dist / 56));
-        }
+    // Start from a clean repeating base every frame (no trails).
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    if (this.hexBoardBaseCanvas) {
+      ctx.drawImage(this.hexBoardBaseCanvas, 0, 0);
+    } else {
+      ctx.fillStyle = "#111827";
+      ctx.fillRect(0, 0, texW, texH);
+    }
 
-        for (const p of ballPoints) {
-          const dx = x - p.x;
-          const dy = y - p.y;
-          const dist = Math.hypot(dx, dy);
-          targetGlow = Math.max(targetGlow, Math.max(0, 1 - dist / 62));
-        }
+    // Draw fast glow blobs at ball & pointer locations.
+    // (This replaces the expensive full-grid scan.)
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
 
-        const current = this.hexGlowLevels[index];
-        const next = targetGlow > current ? targetGlow : current * 0.9;
-        this.hexGlowLevels[index] = next;
-        this.drawHexCell(ctx, x, y, size, next);
-        index += 1;
+    const ptr = this.getPointerOnBoardPlane();
+    if (ptr) {
+      const tx = (ptr.x / boardW) * texW;
+      const ty = texH - (ptr.y / boardH) * texH;
+      this.drawGlowBlob(ctx, tx, ty, 46, "rgba(0, 220, 255, 0.55)");
+    }
+
+    for (const ball of this.activeBalls) {
+      const p = ball.body.translation();
+      const tx = (p.x / boardW) * texW;
+      const ty = texH - (p.y / boardH) * texH;
+      this.drawGlowBlob(ctx, tx, ty, 62, "rgba(0, 220, 255, 0.62)");
+    }
+
+    ctx.restore();
+
+    this.hexBoardTexture.needsUpdate = true;
+  }
+
+  private drawGlowBlob(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radiusPx: number,
+    color: string
+  ): void {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, radiusPx);
+    g.addColorStop(0, color);
+    g.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  private updateBorderHeat(now: number): void {
+    const r = this.config.ballRadius / this.config.scale;
+    const pad = Math.max(0.8, r * 1.6);
+    let touched = false;
+    for (const ball of this.activeBalls) {
+      const p = ball.body.translation();
+      if (
+        p.x < pad ||
+        p.x > this.boardWidth - pad ||
+        p.y < pad ||
+        p.y > this.boardHeight - pad
+      ) {
+        touched = true;
+        break;
       }
     }
-  }
 
-  private drawHexCell(
-    ctx: CanvasRenderingContext2D,
-    centerX: number,
-    centerY: number,
-    radius: number,
-    glow: number
-  ): void {
-    ctx.beginPath();
-    for (let i = 0; i < 6; i += 1) {
-      const angle = (Math.PI / 180) * (60 * i - 30);
-      const x = centerX + radius * Math.cos(angle);
-      const y = centerY + radius * Math.sin(angle);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-
-    const alpha = 0.1 + glow * 0.72;
-    ctx.strokeStyle = `rgba(22, 38, 56, ${alpha})`;
-    ctx.lineWidth = 1.4;
-    ctx.stroke();
-
-    if (glow > 0.15) {
-      ctx.strokeStyle = `rgba(0, 220, 255, ${glow * 0.68})`;
-      ctx.lineWidth = 1.8;
-      ctx.shadowColor = "rgba(0, 220, 255, 0.9)";
-      ctx.shadowBlur = 8 * glow;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
+    if (touched) this.borderHotUntil = Math.max(this.borderHotUntil, now + 180);
+    const hot = now < this.borderHotUntil;
+    if (hot !== this.borderIsHot) {
+      this.borderIsHot = hot;
+      this.gameBoard.classList.toggle("game-board-frame-hot", hot);
     }
   }
 
-  private collectBallScreenPoints(): Array<{ x: number; y: number }> {
-    const points: Array<{ x: number; y: number }> = [];
-    const canvasRect = this.canvas.getBoundingClientRect();
-    for (const ball of this.activeBalls) {
-      const projected = ball.mesh.position.clone().project(this.camera);
-      points.push({
-        x: canvasRect.left + (projected.x * 0.5 + 0.5) * canvasRect.width,
-        y: canvasRect.top + (-projected.y * 0.5 + 0.5) * canvasRect.height,
-      });
-    }
-    return points;
-  }
 }

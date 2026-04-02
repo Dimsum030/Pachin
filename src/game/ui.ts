@@ -34,14 +34,15 @@ export function renderApp(container: HTMLElement): UIElements {
   const indicator = container.querySelector<HTMLElement>("#icon-indicator");
   const stopButton = container.querySelector<HTMLButtonElement>("#btn-stop");
   const shootButton = container.querySelector<HTMLButtonElement>("#btn-shoot");
+  const gameBoard = container.querySelector<HTMLElement>("#game-board");
   const canvas = container.querySelector<HTMLCanvasElement>("#game-canvas");
   const backgroundCanvas = container.querySelector<HTMLCanvasElement>("#bg-hex-canvas");
 
-  if (!lifeCount || !indicator || !stopButton || !shootButton || !canvas || !backgroundCanvas) {
+  if (!lifeCount || !indicator || !stopButton || !shootButton || !gameBoard || !canvas || !backgroundCanvas) {
     throw new Error("Required UI elements were not created.");
   }
 
-  return { lifeCount, indicator, stopButton, shootButton, canvas, backgroundCanvas };
+  return { lifeCount, indicator, stopButton, shootButton, gameBoard, canvas, backgroundCanvas };
 }
 
 export function createGameUI(elements: UIElements): GameUI {

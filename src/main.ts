@@ -10,6 +10,7 @@ const gameUI = createGameUI(uiElements);
 const engine = new GameEngine({
   canvas: uiElements.canvas,
   backgroundCanvas: uiElements.backgroundCanvas,
+  gameBoard: uiElements.gameBoard,
   ui: gameUI,
 });
 

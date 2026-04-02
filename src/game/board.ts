@@ -131,6 +131,48 @@ export function createBoard(
     staticBody
   );
 
+  // Top arch (2D prototype): guides ball from launch rail into playfield — sphere chain + visible tube.
+  const archSegments = 48;
+  const archRadiusX = boardWidth / 2;
+  const archRadiusY = 250 / config.scale;
+  const centerXp = config.logicalWidth / 2 / config.scale;
+  const centerYp = 320 / config.scale;
+  const archPoints: THREE.Vector3[] = [];
+  for (let i = 0; i <= archSegments; i += 1) {
+    const t = i / archSegments;
+    const angle = Math.PI + t * Math.PI;
+    const x = centerXp + Math.cos(angle) * archRadiusX;
+    const yp = centerYp + Math.sin(angle) * archRadiusY;
+    const y = boardHeight - yp;
+    archPoints.push(new THREE.Vector3(x, y, 0));
+  }
+  const archCurve = new THREE.CatmullRomCurve3(archPoints);
+  // Match side/launch rails: same cross-section “height” as wall thickness (wall box short side).
+  const archTubeRadius = wallThickness / 2;
+  const tubeGeom = new THREE.TubeGeometry(archCurve, archSegments * 2, archTubeRadius, 10, false);
+  const tubeMat = new THREE.MeshStandardMaterial({
+    color: CYAN,
+    emissive: CYAN,
+    emissiveIntensity: 0.4,
+    roughness: 0.35,
+    metalness: 0.2,
+  });
+  const archMesh = new THREE.Mesh(tubeGeom, tubeMat);
+  archMesh.position.set(0, 0, 0);
+  scene.add(archMesh);
+
+  const archColliderR = archTubeRadius * 0.96;
+  for (let i = 0; i < archPoints.length; i += 1) {
+    const p = archPoints[i];
+    world.createCollider(
+      rapier.ColliderDesc.ball(archColliderR)
+        .setTranslation(p.x, p.y, p.z)
+        .setFriction(0.08)
+        .setRestitution(0.22),
+      staticBody
+    );
+  }
+
   const gateSensors: GateSensor[] = [];
   const gateY = toWorldY(config, config.logicalHeight - 40);
   const gateHeight = 1;

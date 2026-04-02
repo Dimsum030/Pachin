@@ -43,6 +43,7 @@ export interface UIElements {
   indicator: HTMLElement;
   stopButton: HTMLButtonElement;
   shootButton: HTMLButtonElement;
+  gameBoard: HTMLElement;
   canvas: HTMLCanvasElement;
   backgroundCanvas: HTMLCanvasElement;
 }

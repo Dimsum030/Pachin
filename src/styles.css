@@ -114,10 +114,22 @@
     max-height: calc(100dvh - 164px);
     background: rgba(8, 12, 20, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.22);
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease;
     box-shadow:
       inset 0 0 0 2px rgba(255, 255, 255, 0.05),
       0 24px 52px rgba(0, 0, 0, 0.5),
       0 0 0 1px rgba(112, 194, 255, 0.18);
+  }
+
+  .game-board-frame.game-board-frame-hot {
+    border-color: rgba(0, 220, 255, 0.65);
+    box-shadow:
+      inset 0 0 0 2px rgba(255, 255, 255, 0.08),
+      0 24px 52px rgba(0, 0, 0, 0.5),
+      0 0 0 1px rgba(112, 194, 255, 0.24),
+      0 0 24px rgba(0, 220, 255, 0.22);
   }
 
   .game-board-frame::before {
@@ -131,6 +143,13 @@
       inset 0 0 12px rgba(167, 219, 255, 0.2),
       0 0 18px rgba(136, 206, 255, 0.18);
     z-index: 2;
+  }
+
+  .game-board-frame.game-board-frame-hot::before {
+    border: 2px solid rgba(0, 220, 255, 0.85);
+    box-shadow:
+      inset 0 0 16px rgba(0, 220, 255, 0.18),
+      0 0 26px rgba(0, 220, 255, 0.22);
   }
 
   .game-board-frame::after {
