@@ -342,48 +342,36 @@ export class GameEngine {
     ctx.fillStyle = "#111827";
     ctx.fillRect(0, 0, texW, texH);
 
-    // Create a small repeating tile with a few hex outlines.
-    const tileW = 160;
-    const tileH = 140;
-    const tile = document.createElement("canvas");
-    tile.width = tileW;
-    tile.height = tileH;
-    const tctx = tile.getContext("2d");
-    if (!tctx) return;
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(120, 165, 200, 0.18)";
 
-    tctx.setTransform(1, 0, 0, 1, 0, 0);
-    tctx.clearRect(0, 0, tileW, tileH);
-    tctx.lineWidth = 1.2;
-    tctx.strokeStyle = "rgba(120, 165, 200, 0.14)";
-
-    const r = 22;
+    const r = 45; // Upscaled hexagon radius
     const hStep = Math.sqrt(3) * r;
     const vStep = r * 1.5;
-    for (let row = -1; row <= 3; row += 1) {
-      const y = row * vStep + r * 0.75;
-      for (let col = -1; col <= 4; col += 1) {
-        const x = col * hStep + (row % 2 === 1 ? hStep * 0.5 : 0) + r * 0.75;
-        this.drawHexPath(tctx, x, y, r);
-        tctx.stroke();
+    
+    const cols = Math.ceil(texW / hStep) + 1;
+    const rows = Math.ceil(texH / vStep) + 1;
+
+    for (let row = -1; row <= rows; row += 1) {
+      const y = row * vStep;
+      for (let col = -1; col <= cols; col += 1) {
+        const x = col * hStep + (row % 2 === 1 ? hStep * 0.5 : 0);
+        this.drawHexPath(ctx, x, y, r);
+        ctx.stroke();
       }
     }
 
     // A few faint accent strokes for depth.
-    tctx.strokeStyle = "rgba(0, 220, 255, 0.07)";
-    tctx.lineWidth = 1.6;
-    for (let i = 0; i < 3; i += 1) {
-      const x = (i + 1) * hStep * 0.9;
-      const y = (i + 1) * vStep * 0.75;
-      this.drawHexPath(tctx, x, y, r);
-      tctx.stroke();
+    ctx.strokeStyle = "rgba(0, 220, 255, 0.1)";
+    ctx.lineWidth = 2.0;
+    for (let row = 0; row <= rows; row += 3) {
+      const y = row * vStep;
+      for (let col = 0; col <= cols; col += 3) {
+        const x = col * hStep + (row % 2 === 1 ? hStep * 0.5 : 0);
+        this.drawHexPath(ctx, x, y, r);
+        ctx.stroke();
+      }
     }
-
-    const pattern = ctx.createPattern(tile, "repeat");
-    if (!pattern) return;
-    ctx.strokeStyle = "rgba(255,255,255,0)";
-    ctx.fillStyle = pattern;
-    ctx.globalCompositeOperation = "source-over";
-    ctx.fillRect(0, 0, texW, texH);
   }
 
   private drawHexPath(ctx: CanvasRenderingContext2D, centerX: number, centerY: number, radius: number): void {
