@@ -29,6 +29,7 @@
 
   .bg-hex-canvas {
     position: fixed;
+    background-color: #111827;
     inset: 0;
     z-index: 0;
     width: 100vw;

@@ -40,7 +40,7 @@ export class GameEngine {
   private rafId = 0;
   private pointer = { x: 0, y: 0, active: false };
   private readonly raycaster = new THREE.Raycaster();
-  private hexBoardTexture: THREE.CanvasTexture | null = null;
+    private pointerGlowMesh: THREE.Mesh | null = null;
   private hexBoardBaseCanvas: HTMLCanvasElement | null = null;
   private hexBoardLayout = {
     cols: 0,
@@ -309,8 +309,7 @@ export class GameEngine {
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = 4;
-    this.hexBoardTexture = texture;
-
+    
     const mat = new THREE.MeshBasicMaterial({
       map: texture,
       depthWrite: false,
@@ -338,7 +337,41 @@ export class GameEngine {
       boardH: planeH,
     };
 
+    
     this.buildHexBoardBaseTexture();
+    
+    // Copy base to texture once
+    const ctx = canvas.getContext("2d");
+    if (ctx && this.hexBoardBaseCanvas) {
+      ctx.drawImage(this.hexBoardBaseCanvas, 0, 0);
+      texture.needsUpdate = true;
+    }
+
+    // Create pointer glow mesh
+    const glowCanvas = document.createElement("canvas");
+    glowCanvas.width = 128;
+    glowCanvas.height = 128;
+    const glowCtx = glowCanvas.getContext("2d");
+    if (glowCtx) {
+      const g = glowCtx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      g.addColorStop(0, "rgba(0, 220, 255, 0.55)");
+      g.addColorStop(1, "rgba(0, 0, 0, 0)");
+      glowCtx.fillStyle = g;
+      glowCtx.fillRect(0, 0, 128, 128);
+    }
+    const glowTex = new THREE.CanvasTexture(glowCanvas);
+    const glowMat = new THREE.MeshBasicMaterial({
+      map: glowTex,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    });
+    const glowGeom = new THREE.PlaneGeometry(15, 15); // Size of the glow
+    this.pointerGlowMesh = new THREE.Mesh(glowGeom, glowMat);
+    this.pointerGlowMesh.position.set(0, 0, this.hexPlaneZ + 0.1);
+    this.pointerGlowMesh.visible = false;
+    this.scene.add(this.pointerGlowMesh);
+
   }
 
   private buildHexBoardBaseTexture(): void {
@@ -461,16 +494,18 @@ export class GameEngine {
     this.backgroundCtx.scale(dpr, dpr);
   }
 
-  private renderBackgroundHex(): void {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = this.backgroundCanvas.width / dpr;
-    const h = this.backgroundCanvas.height / dpr;
-    this.backgroundCtx.setTransform(1, 0, 0, 1, 0, 0);
-    this.backgroundCtx.clearRect(0, 0, this.backgroundCanvas.width, this.backgroundCanvas.height);
-    this.backgroundCtx.scale(dpr, dpr);
-    this.backgroundCtx.fillStyle = "#111827";
-    this.backgroundCtx.fillRect(0, 0, w, h);
-    this.renderHexBoardPlane();
+    private renderBackgroundHex(): void {
+    // Update pointer glow mesh position
+    if (this.pointerGlowMesh) {
+      const ptr = this.getPointerOnBoardPlane();
+      if (ptr) {
+        this.pointerGlowMesh.position.x = ptr.x;
+        this.pointerGlowMesh.position.y = ptr.y;
+        this.pointerGlowMesh.visible = true;
+      } else {
+        this.pointerGlowMesh.visible = false;
+      }
+    }
   }
 
   private getPointerOnBoardPlane(): { x: number; y: number } | null {
@@ -502,60 +537,9 @@ export class GameEngine {
     return { x: hit.x, y: hit.y };
   }
 
-  private renderHexBoardPlane(): void {
-    if (!this.hexBoardTexture) return;
-    const canvas = this.hexBoardTexture.image as HTMLCanvasElement;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const { texW, texH, boardW, boardH } = this.hexBoardLayout;
-    if (texW === 0 || texH === 0) return;
+  
 
-    // Start from a clean repeating base every frame (no trails).
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    if (this.hexBoardBaseCanvas) {
-      ctx.drawImage(this.hexBoardBaseCanvas, 0, 0);
-    } else {
-      ctx.fillStyle = "#111827";
-      ctx.fillRect(0, 0, texW, texH);
-    }
-
-    // Draw fast glow blobs at ball & pointer locations.
-    // (This replaces the expensive full-grid scan.)
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-
-    const ptr = this.getPointerOnBoardPlane();
-    if (ptr) {
-      // Adjust pointer coordinates for the 3x larger plane centered on the board
-      const offsetX = (boardW - (boardW / 3)) / 2;
-      const offsetY = (boardH - (boardH / 3)) / 2;
-      const tx = ((ptr.x + offsetX) / boardW) * texW;
-      const ty = texH - ((ptr.y + offsetY) / boardH) * texH;
-      this.drawGlowBlob(ctx, tx, ty, 46, "rgba(0, 220, 255, 0.55)");
-    }
-
-    // Ball glow removed as requested
-
-    ctx.restore();
-
-    this.hexBoardTexture.needsUpdate = true;
-  }
-
-  private drawGlowBlob(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    radiusPx: number,
-    color: string
-  ): void {
-    const g = ctx.createRadialGradient(x, y, 0, x, y, radiusPx);
-    g.addColorStop(0, color);
-    g.addColorStop(1, "rgba(0, 0, 0, 0)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  
 
   private updateBorderHeat(now: number): void {
     const r = this.config.ballRadius / this.config.scale;
