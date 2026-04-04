@@ -519,12 +519,7 @@ export class GameEngine {
       this.drawGlowBlob(ctx, tx, ty, 46, "rgba(0, 220, 255, 0.55)");
     }
 
-    for (const ball of this.activeBalls) {
-      const p = ball.body.translation();
-      const tx = (p.x / boardW) * texW;
-      const ty = texH - (p.y / boardH) * texH;
-      this.drawGlowBlob(ctx, tx, ty, 62, "rgba(0, 220, 255, 0.62)");
-    }
+    // Ball glow removed as requested
 
     ctx.restore();
 
