@@ -15,7 +15,48 @@ const engine = new GameEngine({
 });
 
 uiElements.stopButton.addEventListener("click", () => engine.stopLight());
-uiElements.shootButton.addEventListener("click", () => engine.shootBall());
+
+let chargeStartTime = 0;
+let chargeInterval: number | null = null;
+const MAX_CHARGE_TIME = 1000; // 1 second for max charge
+
+const startCharge = (e: Event) => {
+  e.preventDefault();
+  if (uiElements.shootButton.disabled) return;
+  chargeStartTime = performance.now();
+  uiElements.shootButton.textContent = "Charging...";
+  
+  if (chargeInterval) clearInterval(chargeInterval);
+  chargeInterval = window.setInterval(() => {
+    const elapsed = performance.now() - chargeStartTime;
+    const ratio = Math.min(elapsed / MAX_CHARGE_TIME, 1.0);
+    const percent = Math.floor(ratio * 100);
+    uiElements.shootButton.textContent = `Power: ${percent}%`;
+  }, 50);
+};
+
+const endCharge = (e: Event) => {
+  e.preventDefault();
+  if (uiElements.shootButton.disabled || chargeStartTime === 0) return;
+  if (chargeInterval) {
+    clearInterval(chargeInterval);
+    chargeInterval = null;
+  }
+  
+  const elapsed = performance.now() - chargeStartTime;
+  const ratio = Math.min(elapsed / MAX_CHARGE_TIME, 1.0);
+  chargeStartTime = 0;
+  
+  uiElements.shootButton.textContent = "Launch Ball";
+  engine.shootBall(ratio);
+};
+
+uiElements.shootButton.addEventListener("mousedown", startCharge);
+uiElements.shootButton.addEventListener("touchstart", startCharge, { passive: false });
+
+window.addEventListener("mouseup", endCharge);
+window.addEventListener("touchend", endCharge, { passive: false });
+
 window.addEventListener("resize", () => engine.resizeCanvas());
 
 void engine.start();

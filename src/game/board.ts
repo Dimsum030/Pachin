@@ -72,12 +72,12 @@ export function createBoard(
   const spacingX = 100;
   const startX = 100;
   const pinRadius = config.pinRadius / config.scale;
-  const pinGeometry = new THREE.CylinderGeometry(pinRadius, pinRadius, config.boardDepth, 16);
-  const pinMaterial = new THREE.MeshStandardMaterial({
-    color: 0xe0e0e0,
-    emissive: 0x111111,
-    roughness: 0.15,
-    metalness: 0.85,
+  const pinGeometry = new THREE.CylinderGeometry(pinRadius, pinRadius, config.boardDepth, 24);
+  const pinMaterial = new THREE.MeshPhongMaterial({
+    color: 0xaaaaaa,
+    emissive: 0x222222,
+    specular: 0xffffff,
+    shininess: 100,
   });
 
   for (let row = 0; row < pinRows; row += 1) {
@@ -170,18 +170,30 @@ export function createBoard(
   const archMesh = new THREE.Mesh(archGeom, railMaterial);
   scene.add(archMesh);
   
-  const archTubeRadius = wallThickness / 2;
+  
 
-  const archColliderR = archTubeRadius * 0.96;
-  for (let i = 0; i < archPoints.length; i += 1) {
-    const p = archPoints[i];
-    world.createCollider(
-      rapier.ColliderDesc.ball(archColliderR)
-        .setTranslation(p.x, p.y, p.z)
-        .setFriction(0.08)
-        .setRestitution(0.22),
-      staticBody
-    );
+  // Create smooth arch colliders using a series of cuboids
+  for (let i = 0; i < archPoints.length - 1; i += 1) {
+    const p1 = archPoints[i];
+    const p2 = archPoints[i + 1];
+    
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const length = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx);
+    
+    const midX = (p1.x + p2.x) / 2;
+    const midY = (p1.y + p2.y) / 2;
+    
+    // We use a cuboid that matches the wall thickness.
+    // The length is slightly longer to prevent gaps.
+    const collider = rapier.ColliderDesc.cuboid(length / 2 + 0.1, wallThickness / 2, halfDepth)
+      .setTranslation(midX, midY, 0)
+      .setRotation(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), angle))
+      .setFriction(0.1)
+      .setRestitution(0.1); // Low restitution so it slides instead of bouncing
+      
+    world.createCollider(collider, staticBody);
   }
 
   const gateSensors: GateSensor[] = [];

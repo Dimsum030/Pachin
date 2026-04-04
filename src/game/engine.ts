@@ -134,7 +134,7 @@ export class GameEngine {
     this.ui.setButtons(false, true);
   }
 
-  public shootBall(): void {
+  public shootBall(chargeRatio: number = 1.0): void {
     if (!this.world) return;
     if (this.ballCount <= 0 || this.isGameOver || !this.isLightStopped || this.activeBalls.length > 0) {
       return;
@@ -156,12 +156,18 @@ export class GameEngine {
     );
     this.world.createCollider(
       RAPIER.ColliderDesc.ball(radius)
-        .setRestitution(0.45)
+        .setRestitution(0.2) // Lower restitution so it doesn't bounce wildly
         .setFriction(0.1)
         .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),
       ballBody
     );
-    ballBody.setLinvel({ x: 0, y: this.config.launchSpeed, z: 0 }, true);
+    
+    // Calculate launch speed based on charge ratio
+    const minSpeed = this.config.launchSpeed * 0.4;
+    const maxSpeed = this.config.launchSpeed * 1.2;
+    const finalSpeed = minSpeed + (maxSpeed - minSpeed) * chargeRatio;
+    
+    ballBody.setLinvel({ x: 0, y: finalSpeed, z: 0 }, true);
 
     const ballMesh = new THREE.Mesh(
       new THREE.SphereGeometry(radius, 24, 16),
@@ -479,11 +485,14 @@ export class GameEngine {
     if (!this.raycaster.ray.intersectPlane(plane, hit)) return null;
     const pad = 2;
     const { boardW, boardH } = this.hexBoardLayout;
+    const offsetX = (boardW - (boardW / 3)) / 2;
+    const offsetY = (boardH - (boardH / 3)) / 2;
+    
     if (
-      hit.x < -pad ||
-      hit.x > boardW + pad ||
-      hit.y < -pad ||
-      hit.y > boardH + pad
+      hit.x < -offsetX - pad ||
+      hit.x > boardW - offsetX + pad ||
+      hit.y < -offsetY - pad ||
+      hit.y > boardH - offsetY + pad
     ) {
       return null;
     }
@@ -514,8 +523,11 @@ export class GameEngine {
 
     const ptr = this.getPointerOnBoardPlane();
     if (ptr) {
-      const tx = (ptr.x / boardW) * texW;
-      const ty = texH - (ptr.y / boardH) * texH;
+      // Adjust pointer coordinates for the 3x larger plane centered on the board
+      const offsetX = (boardW - (boardW / 3)) / 2;
+      const offsetY = (boardH - (boardH / 3)) / 2;
+      const tx = ((ptr.x + offsetX) / boardW) * texW;
+      const ty = texH - ((ptr.y + offsetY) / boardH) * texH;
       this.drawGlowBlob(ctx, tx, ty, 46, "rgba(0, 220, 255, 0.55)");
     }
 
