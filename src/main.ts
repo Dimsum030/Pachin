@@ -15,14 +15,18 @@ const engine = new GameEngine({
 });
 
 uiElements.stopButton.addEventListener("click", () => engine.stopLight());
+uiElements.stopButton.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  engine.stopLight();
+}, { passive: false });
 
 let chargeStartTime = 0;
 let chargeInterval: number | null = null;
 const MAX_CHARGE_TIME = 1000; // 1 second for max charge
 
 const startCharge = (e: Event) => {
-  e.preventDefault();
   if (uiElements.shootButton.disabled) return;
+  e.preventDefault();
   chargeStartTime = performance.now();
   uiElements.shootButton.textContent = "Charging...";
   
@@ -36,8 +40,8 @@ const startCharge = (e: Event) => {
 };
 
 const endCharge = (e: Event) => {
-  e.preventDefault();
   if (uiElements.shootButton.disabled || chargeStartTime === 0) return;
+  e.preventDefault();
   if (chargeInterval) {
     clearInterval(chargeInterval);
     chargeInterval = null;

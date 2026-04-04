@@ -26,7 +26,7 @@ export function renderApp(container: HTMLElement): UIElements {
         <button id="btn-stop" class="btn-modern btn-modern-active">Lock Gate</button>
         <button id="btn-shoot" class="btn-modern btn-modern-inactive" disabled>Launch Ball</button>
       </footer>
-      <div class="version-badge">v3.0.0</div>
+      <div class="version-badge">v3.0.1</div>
     </div>
   `;
 

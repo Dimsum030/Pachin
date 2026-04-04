@@ -127,6 +127,7 @@ export class GameEngine {
   }
 
   public stopLight(): void {
+    console.log("stopLight called", { isLightStopped: this.isLightStopped, isGameOver: this.isGameOver, activeBalls: this.activeBalls.length });
     if (this.isLightStopped || this.isGameOver || this.activeBalls.length > 0) return;
     this.isLightStopped = true;
     this.activeGateIndex = this.lightIndex;
@@ -295,8 +296,10 @@ export class GameEngine {
   }
 
   private setupHexBoardPlane(boardWidth: number, boardHeight: number): void {
-    const texW = 768;
-    const texH = Math.max(256, Math.round((texW * boardHeight) / boardWidth));
+    const planeW = boardWidth * 3;
+    const planeH = boardHeight * 3;
+    const texW = 768 * 3;
+    const texH = Math.max(256 * 3, Math.round((texW * planeH) / planeW));
     const canvas = document.createElement("canvas");
     canvas.width = texW;
     canvas.height = texH;
@@ -312,7 +315,7 @@ export class GameEngine {
       map: texture,
       depthWrite: false,
     });
-    const geom = new THREE.PlaneGeometry(boardWidth, boardHeight);
+    const geom = new THREE.PlaneGeometry(planeW, planeH);
     const mesh = new THREE.Mesh(geom, mat);
     mesh.position.set(boardWidth / 2, boardHeight / 2, this.hexPlaneZ);
     mesh.renderOrder = -10;
@@ -321,8 +324,8 @@ export class GameEngine {
     const hexR = 0.36;
     const hStep = Math.sqrt(3) * hexR;
     const vStep = hexR * 1.5;
-    const cols = Math.ceil(boardWidth / hStep) + 6;
-    const rows = Math.ceil(boardHeight / vStep) + 6;
+    const cols = Math.ceil(planeW / hStep) + 6;
+    const rows = Math.ceil(planeH / vStep) + 6;
     this.hexBoardLayout = {
       cols,
       rows,
@@ -331,8 +334,8 @@ export class GameEngine {
       vStep,
       texW,
       texH,
-      boardW: boardWidth,
-      boardH: boardHeight,
+      boardW: planeW,
+      boardH: planeH,
     };
 
     this.buildHexBoardBaseTexture();
